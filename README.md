@@ -9,6 +9,7 @@ A voice-controlled chess analysis application that allows you to analyze chess p
 - 📚 **Lichess Master Games**: Query Lichess Opening Explorer to see what moves masters played in similar positions
 - 🎯 **Interactive Board**: Drag-and-drop or voice-controlled move input
 - 📊 **Real-time Analysis**: Automatic analysis after each move
+- 🔊 **Sound Effects**: Move and capture sounds (toggleable via button or voice)
 
 ## Prerequisites
 
@@ -89,6 +90,7 @@ The voice recognition supports various formats:
 - **Special moves**: "castle kingside", "castle queenside"
 - **Square-to-square**: "e2 to e4"
 - **Board controls**: "reset", "flip", "undo"
+- **Sound controls**: "sound on", "sound off"
 
 ## API Endpoints
 

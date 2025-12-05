@@ -170,6 +170,15 @@ h1 {
     transform: translateY(-2px);
 }
 
+.control-btn.sound-btn.muted {
+    opacity: 0.6;
+    background: #95a5a6;
+}
+
+.control-btn.sound-btn.muted:hover {
+    background: #7f8c8d;
+}
+
 /* Analysis Section */
 .analysis-section {
     display: grid;

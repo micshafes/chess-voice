@@ -8,6 +8,11 @@ let recognition = null;
 let isListening = false;
 let API_BASE_URL = 'http://127.0.0.1:8001/api';
 
+// Sound effects
+let soundEnabled = true;
+let moveSound = null;
+let captureSound = null;
+
 // ===========================
 // Initialization
 // ===========================
@@ -48,8 +53,10 @@ function initializeApp() {
     
     initializeBoard();
     initializeVoiceRecognition();
+    initializeSounds();
     setupEventListeners();
     updateStatus();
+    updateSoundButton(); // Initialize sound button state
 }
 
 // Start initialization when DOM is ready
@@ -152,6 +159,13 @@ function onDrop(source, target) {
             return 'snapback';
         }
         
+        // Play sound
+        playMoveSound({ isCapture: move.captured !== undefined });
+        
+        // Use requestAnimationFrame for smoother updates
+        requestAnimationFrame(() => {
+            board.position(game.fen());
+        });
         updateStatus();
         analyzePosition();
         return true;
@@ -253,6 +267,81 @@ function updateVoiceUI() {
         btnText.textContent = '🎤 Listening...';
     } else {
         btnText.textContent = '🎤 Start Voice';
+    }
+}
+
+// ===========================
+// Sound Effects
+// ===========================
+
+function initializeSounds() {
+    try {
+        // Use Lichess open-source sound files
+        moveSound = new Audio('https://lichess1.org/assets/sound/standard/Move.mp3');
+        captureSound = new Audio('https://lichess1.org/assets/sound/standard/Capture.mp3');
+
+        [moveSound, captureSound].forEach(audio => {
+            audio.crossOrigin = 'anonymous';
+            audio.preload = 'auto';
+        });
+        
+        // Preload sounds
+        moveSound.load();
+        captureSound.load();
+        
+        // Set volume
+        moveSound.volume = 0.5;
+        captureSound.volume = 0.5;
+        
+        console.log('Sounds initialized');
+    } catch (error) {
+        console.log('Could not initialize sounds:', error);
+        soundEnabled = false;
+    }
+}
+
+function playMoveSound({ isCapture = false } = {}) {
+    if (!soundEnabled) return;
+    
+    try {
+        let sound = moveSound;
+        if (isCapture && captureSound) {
+            sound = captureSound;
+        }
+        
+        // Reset and play
+        sound.currentTime = 0;
+        sound.play().catch(e => {
+            console.log('Could not play sound:', e);
+            // Browsers may block autoplay - that's ok
+        });
+    } catch (error) {
+        console.log('Error playing sound:', error);
+    }
+}
+
+function toggleSound() {
+    soundEnabled = !soundEnabled;
+    updateSoundButton();
+    
+    // Play a test sound when enabling
+    if (soundEnabled) {
+        setTimeout(() => playMoveSound(), 100);
+    }
+}
+
+function updateSoundButton() {
+    const btn = document.getElementById('soundBtn');
+    if (!btn) return;
+    
+    if (soundEnabled) {
+        btn.textContent = '🔊 Sound';
+        btn.classList.remove('muted');
+        btn.title = 'Sound on (click to toggle)';
+    } else {
+        btn.textContent = '🔇 Sound';
+        btn.classList.add('muted');
+        btn.title = 'Sound off (click to toggle)';
     }
 }
 
@@ -402,6 +491,8 @@ function parseAndMakeMove(voiceText) {
     const resetCommands = ['reset', 'restart', 'clear', 'new game', 'start over'];
     const flipCommands = ['flip', 'rotate', 'turn', 'switch'];
     const undoCommands = ['undo', 'back', 'previous', 'go back', 'take back'];
+    const soundOnCommands = ['sound on', 'enable sound', 'turn on sound', 'unmute'];
+    const soundOffCommands = ['sound off', 'disable sound', 'turn off sound', 'mute'];
     
     if (resetCommands.some(cmd => text.includes(cmd))) {
         resetGame();
@@ -419,6 +510,22 @@ function parseAndMakeMove(voiceText) {
     if (undoCommands.some(cmd => text.includes(cmd))) {
         undoMove();
         document.getElementById('voiceStatus').textContent = 'Move undone';
+        return;
+    }
+    
+    if (soundOnCommands.some(cmd => text.includes(cmd))) {
+        if (!soundEnabled) {
+            toggleSound();
+        }
+        document.getElementById('voiceStatus').textContent = 'Sound enabled';
+        return;
+    }
+    
+    if (soundOffCommands.some(cmd => text.includes(cmd))) {
+        if (soundEnabled) {
+            toggleSound();
+        }
+        document.getElementById('voiceStatus').textContent = 'Sound disabled';
         return;
     }
     
@@ -472,6 +579,9 @@ function parseAndMakeMove(voiceText) {
             // Try to make the move
             const result = game.move(move);
             if (result) {
+                // Play sound
+                playMoveSound({ isCapture: result.captured !== undefined });
+                
                 if (board) {
                     // Use requestAnimationFrame for smoother updates
                     requestAnimationFrame(() => {
@@ -508,6 +618,9 @@ function tryAlternativeParsing(text) {
             const moveObj = { from, to, promotion: 'q' };
             const result = game.move(moveObj);
             if (result) {
+                // Play sound
+                playMoveSound({ isCapture: result.captured !== undefined });
+                
                 if (board) {
                     // Use requestAnimationFrame for smoother updates
                     requestAnimationFrame(() => {
@@ -671,6 +784,7 @@ function setupEventListeners() {
     document.getElementById('resetBtn').addEventListener('click', resetGame);
     document.getElementById('undoBtn').addEventListener('click', undoMove);
     document.getElementById('flipBtn').addEventListener('click', flipBoard);
+    document.getElementById('soundBtn').addEventListener('click', toggleSound);
 }
 
 function resetGame() {
