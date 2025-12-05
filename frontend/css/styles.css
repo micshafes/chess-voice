@@ -28,21 +28,21 @@ h1 {
     text-align: center;
     color: #667eea;
     margin-bottom: 5px;
-    font-size: clamp(1.5em, 4vw, 2.5em);
+    font-size: clamp(1.3em, 3vw, 2.2em);
 }
 
 .subtitle {
     text-align: center;
     color: #666;
-    margin-bottom: 15px;
-    font-size: clamp(0.9em, 2vw, 1.1em);
+    margin-bottom: 10px;
+    font-size: clamp(0.8em, 1.5vw, 1em);
 }
 
 /* Voice Control */
 .voice-control {
     text-align: center;
-    margin-bottom: 15px;
-    padding: 15px;
+    margin-bottom: 10px;
+    padding: 10px;
     background: #f8f9fa;
     border-radius: 10px;
 }
@@ -51,14 +51,14 @@ h1 {
     background: #667eea;
     color: white;
     border: none;
-    padding: 12px 24px;
-    font-size: clamp(1em, 2.5vw, 1.2em);
+    padding: 10px 20px;
+    font-size: clamp(0.9em, 2vw, 1.1em);
     border-radius: 50px;
     cursor: pointer;
     transition: all 0.3s;
     box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
     width: 100%;
-    max-width: 300px;
+    max-width: 250px;
 }
 
 .voice-btn:hover {
@@ -78,19 +78,28 @@ h1 {
 }
 
 .voice-status {
-    margin-top: 15px;
+    margin-top: 8px;
     font-weight: 600;
     color: #555;
+    font-size: 0.9em;
 }
 
 .voice-transcript {
-    margin-top: 10px;
-    padding: 10px;
+    margin-top: 6px;
+    padding: 8px;
     background: white;
     border-radius: 5px;
-    min-height: 30px;
+    min-height: 24px;
     font-style: italic;
     color: #888;
+    font-size: 0.9em;
+}
+
+/* Main Content Layout - Horizontal on wider/shorter screens */
+.main-content {
+    display: flex;
+    gap: 15px;
+    align-items: flex-start;
 }
 
 /* Board Container */
@@ -98,19 +107,18 @@ h1 {
     display: flex;
     justify-content: center;
     align-items: center;
-    margin: 15px 0;
     width: 100%;
-    padding: 10px;
+    padding: 5px;
     box-sizing: border-box;
+    flex-shrink: 0;
 }
 
 #myBoard {
     width: 100% !important;
-    max-width: min(500px, 90vw, calc(100vh - 600px)) !important;
+    max-width: min(450px, 85vw, calc(100vh - 380px)) !important;
     aspect-ratio: 1;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
     border-radius: 5px;
-    /* Smooth transitions for board updates */
     transition: opacity 0.1s ease;
 }
 
@@ -134,19 +142,12 @@ h1 {
     background-color: #b58863;
 }
 
-/* Responsive board sizing */
-@media (max-width: 768px) {
-    #myBoard {
-        max-width: 100% !important;
-    }
-}
-
 /* Controls */
 .controls {
     display: flex;
     justify-content: center;
-    gap: 10px;
-    margin: 15px 0;
+    gap: 8px;
+    margin: 10px 0;
     flex-wrap: wrap;
 }
 
@@ -154,14 +155,14 @@ h1 {
     background: #764ba2;
     color: white;
     border: none;
-    padding: 8px 16px;
-    font-size: clamp(0.85em, 2vw, 1em);
+    padding: 6px 12px;
+    font-size: clamp(0.8em, 1.8vw, 0.95em);
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.3s;
     flex: 1;
-    min-width: 100px;
-    max-width: 150px;
+    min-width: 90px;
+    max-width: 130px;
 }
 
 .control-btn:hover {
@@ -173,48 +174,49 @@ h1 {
 .analysis-section {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 15px;
-    margin: 15px 0;
+    gap: 10px;
+    margin: 10px 0;
 }
 
 .analysis-panel {
     background: #f8f9fa;
-    padding: 15px;
+    padding: 10px;
     border-radius: 10px;
     border: 2px solid #e9ecef;
     overflow-y: auto;
-    max-height: 400px;
+    max-height: min(300px, calc(100vh - 500px));
+    min-height: 120px;
     box-sizing: border-box;
 }
 
 .analysis-panel h2 {
     color: #667eea;
-    margin-bottom: 10px;
-    font-size: clamp(1.1em, 2.5vw, 1.3em);
+    margin-bottom: 8px;
+    font-size: clamp(0.95em, 2vw, 1.15em);
     position: sticky;
     top: 0;
     background: #f8f9fa;
     z-index: 1;
-    padding-bottom: 5px;
+    padding-bottom: 4px;
 }
 
 .moves-list {
-    min-height: 150px;
-    max-height: 350px;
+    min-height: 80px;
+    max-height: calc(100% - 30px);
     overflow-y: auto;
 }
 
 .move-item {
     background: white;
-    padding: 10px;
-    margin-bottom: 8px;
+    padding: 8px;
+    margin-bottom: 6px;
     border-radius: 8px;
     border-left: 4px solid #667eea;
     display: flex;
     justify-content: space-between;
     align-items: center;
     transition: all 0.2s;
-    font-size: clamp(0.85em, 2vw, 1em);
+    font-size: clamp(0.8em, 1.8vw, 0.95em);
 }
 
 .move-item:hover {
@@ -232,12 +234,12 @@ h1 {
 
 .move-name {
     font-weight: 600;
-    font-size: 1.1em;
+    font-size: 1em;
     color: #333;
 }
 
 .move-eval {
-    font-size: 0.9em;
+    font-size: 0.85em;
     color: #666;
     font-family: 'Courier New', monospace;
 }
@@ -251,24 +253,25 @@ h1 {
     color: #999;
     font-style: italic;
     text-align: center;
-    padding: 20px;
+    padding: 15px;
+    font-size: 0.9em;
 }
 
 /* Status Info */
 .status-info {
     background: #f8f9fa;
-    padding: 10px;
+    padding: 8px 10px;
     border-radius: 8px;
-    margin-top: 15px;
-    font-size: clamp(0.8em, 2vw, 0.9em);
+    margin-top: 10px;
+    font-size: clamp(0.75em, 1.5vw, 0.85em);
     color: #555;
     overflow-wrap: break-word;
     word-wrap: break-word;
 }
 
 .status-info div {
-    margin: 3px 0;
-    line-height: 1.4;
+    margin: 2px 0;
+    line-height: 1.3;
 }
 
 .status-info span {
@@ -281,91 +284,324 @@ h1 {
     text-align: center;
     color: #667eea;
     font-style: italic;
-    font-size: clamp(0.85em, 2vw, 1em);
+    font-size: clamp(0.8em, 1.8vw, 0.95em);
 }
 
-/* Responsive */
-@media (max-width: 768px) {
+/* Large screens - side by side layout */
+@media (min-width: 1100px) and (min-height: 700px) {
+    #container {
+        display: grid;
+        grid-template-columns: minmax(400px, 500px) 1fr;
+        grid-template-rows: auto auto 1fr auto;
+        gap: 15px;
+        padding: 20px;
+    }
+    
+    h1, .subtitle, .voice-control, .status-info {
+        grid-column: 1 / -1;
+    }
+    
+    #board-container {
+        grid-column: 1;
+        grid-row: 3;
+    }
+    
+    .controls {
+        grid-column: 1;
+        grid-row: 4;
+        margin: 0;
+    }
+    
+    .analysis-section {
+        grid-column: 2;
+        grid-row: 3 / 5;
+        grid-template-columns: 1fr;
+        gap: 15px;
+        margin: 0;
+        align-content: start;
+    }
+    
+    .analysis-panel {
+        max-height: 280px;
+    }
+    
+    #myBoard {
+        max-width: min(450px, 45vw, calc(100vh - 300px)) !important;
+    }
+}
+
+/* Tablets and smaller laptops */
+@media (max-width: 1099px) {
+    body {
+        padding: 8px;
+    }
+    
+    #container {
+        padding: 12px;
+        border-radius: 15px;
+    }
+    
+    #myBoard {
+        max-width: min(380px, 80vw, calc(100vh - 420px)) !important;
+    }
+    
+    .analysis-panel {
+        max-height: min(200px, calc(100vh - 550px));
+        min-height: 100px;
+    }
+}
+
+/* Narrow screens - stack analysis panels */
+@media (max-width: 700px) {
+    .analysis-section {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+    
+    #myBoard {
+        max-width: min(350px, 85vw, calc(100vh - 380px)) !important;
+    }
+    
+    .analysis-panel {
+        max-height: min(180px, calc(50vh - 200px));
+        min-height: 90px;
+    }
+}
+
+/* Small phones */
+@media (max-width: 480px) {
     body {
         padding: 5px;
     }
     
     #container {
         padding: 10px;
-        border-radius: 15px;
-    }
-    
-    .analysis-section {
-        grid-template-columns: 1fr;
-        gap: 10px;
+        border-radius: 12px;
     }
     
     #myBoard {
-        max-width: min(400px, 85vw) !important;
-    }
-    
-    .analysis-panel {
-        max-height: 300px;
-    }
-    
-    .moves-list {
-        max-height: 250px;
+        max-width: min(300px, 90vw, calc(100vh - 350px)) !important;
     }
     
     .voice-control {
-        padding: 10px;
-    }
-    
-    .controls {
-        gap: 8px;
-    }
-    
-    .control-btn {
-        min-width: 80px;
-        padding: 6px 12px;
-    }
-}
-
-@media (max-width: 480px) {
-    #myBoard {
-        max-width: min(350px, 90vw) !important;
+        padding: 8px;
     }
     
     .analysis-panel {
-        padding: 10px;
-        max-height: 250px;
-    }
-    
-    .moves-list {
-        max-height: 200px;
+        padding: 8px;
+        max-height: min(150px, calc(50vh - 180px));
+        min-height: 80px;
     }
     
     .move-item {
-        padding: 8px;
-        font-size: 0.85em;
+        padding: 6px;
     }
     
+    .control-btn {
+        min-width: 75px;
+        padding: 5px 10px;
+    }
+}
+
+/* Short screens (laptops with limited height) */
+@media (max-height: 750px) {
     h1 {
         margin-bottom: 3px;
+        font-size: clamp(1.2em, 2.5vw, 1.8em);
     }
     
     .subtitle {
-        margin-bottom: 10px;
+        margin-bottom: 6px;
+        font-size: clamp(0.75em, 1.3vw, 0.9em);
     }
-}
-
-@media (max-height: 800px) {
+    
+    .voice-control {
+        padding: 8px;
+        margin-bottom: 8px;
+    }
+    
+    .voice-btn {
+        padding: 8px 16px;
+    }
+    
+    .voice-status {
+        margin-top: 5px;
+        font-size: 0.85em;
+    }
+    
+    .voice-transcript {
+        margin-top: 4px;
+        padding: 6px;
+        min-height: 20px;
+    }
+    
     #myBoard {
-        max-width: min(400px, 40vh) !important;
+        max-width: min(320px, 70vw, calc(100vh - 350px)) !important;
+    }
+    
+    .controls {
+        margin: 6px 0;
+    }
+    
+    .analysis-section {
+        margin: 6px 0;
     }
     
     .analysis-panel {
-        max-height: 250px;
+        max-height: min(160px, calc(100vh - 480px));
+        min-height: 80px;
+        padding: 8px;
+    }
+    
+    .analysis-panel h2 {
+        font-size: 0.95em;
+        margin-bottom: 5px;
     }
     
     .moves-list {
-        max-height: 200px;
+        min-height: 60px;
+    }
+    
+    .status-info {
+        padding: 6px 8px;
+        margin-top: 6px;
     }
 }
 
+/* Very short screens */
+@media (max-height: 650px) {
+    body {
+        padding: 5px;
+    }
+    
+    #container {
+        padding: 10px;
+    }
+    
+    h1 {
+        font-size: 1.1em;
+    }
+    
+    .subtitle {
+        font-size: 0.75em;
+        margin-bottom: 5px;
+    }
+    
+    .voice-control {
+        padding: 6px;
+        margin-bottom: 6px;
+    }
+    
+    .voice-btn {
+        padding: 6px 14px;
+        font-size: 0.9em;
+    }
+    
+    .voice-status, .voice-transcript {
+        font-size: 0.8em;
+    }
+    
+    #myBoard {
+        max-width: min(280px, 65vw, calc(100vh - 320px)) !important;
+    }
+    
+    .controls {
+        margin: 5px 0;
+        gap: 5px;
+    }
+    
+    .control-btn {
+        padding: 5px 8px;
+        font-size: 0.8em;
+        min-width: 70px;
+    }
+    
+    .analysis-panel {
+        max-height: min(130px, calc(100vh - 420px));
+        min-height: 70px;
+        padding: 6px;
+    }
+    
+    .analysis-panel h2 {
+        font-size: 0.9em;
+        margin-bottom: 4px;
+    }
+    
+    .move-item {
+        padding: 5px;
+        margin-bottom: 4px;
+        font-size: 0.8em;
+    }
+    
+    .placeholder {
+        padding: 10px;
+        font-size: 0.8em;
+    }
+    
+    .status-info {
+        font-size: 0.7em;
+        padding: 5px 6px;
+        margin-top: 5px;
+    }
+}
 
+/* Wide but short screens (typical laptop aspect ratio) */
+@media (min-width: 900px) and (max-height: 750px) {
+    #container {
+        display: grid;
+        grid-template-columns: minmax(280px, 350px) 1fr;
+        grid-template-rows: auto auto auto 1fr auto;
+        gap: 10px;
+        padding: 12px;
+        align-items: start;
+    }
+    
+    h1 {
+        grid-column: 1 / -1;
+        grid-row: 1;
+    }
+    
+    .subtitle {
+        grid-column: 1 / -1;
+        grid-row: 2;
+    }
+    
+    .voice-control {
+        grid-column: 1 / -1;
+        grid-row: 3;
+    }
+    
+    #board-container {
+        grid-column: 1;
+        grid-row: 4;
+        padding: 0;
+    }
+    
+    .controls {
+        grid-column: 1;
+        grid-row: 5;
+        margin: 5px 0 0 0;
+    }
+    
+    .analysis-section {
+        grid-column: 2;
+        grid-row: 4 / 6;
+        grid-template-columns: 1fr;
+        gap: 8px;
+        margin: 0;
+        align-content: start;
+    }
+    
+    .analysis-panel {
+        max-height: min(180px, calc(50vh - 100px));
+    }
+    
+    .status-info {
+        grid-column: 1 / -1;
+        grid-row: 6;
+    }
+    
+    #myBoard {
+        max-width: min(300px, 35vw, calc(100vh - 280px)) !important;
+    }
+}
