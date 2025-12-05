@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>Chess Voice - Voice-Controlled Chess Analysis</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>♟️</text></svg>">
+    <link rel="stylesheet"
+          href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css"
+          integrity="sha384-q94+BZtLrkL1/ohfjR8c6L+A6qzNH9R2hBLwyoAfu3i/WCvQjzL2RQJ3uNHDISdU"
+          crossorigin="anonymous">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div id="container">
+        <h1>Chess Voice</h1>
+        <p class="subtitle">Voice-controlled chess analysis with Stockfish and master games database</p>
+        
+        <!-- Voice Control Section -->
+        <div class="voice-control">
+            <button id="voiceBtn" class="voice-btn">
+                <span id="voiceBtnText">🎤 Start Voice</span>
+            </button>
+            <div id="voiceStatus" class="voice-status">Click to start voice recognition</div>
+            <div id="voiceTranscript" class="voice-transcript"></div>
+        </div>
+
+        <!-- Chess Board -->
+        <div id="board-container">
+            <div id="myBoard"></div>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <button id="resetBtn" class="control-btn">🔄 Reset Board</button>
+            <button id="undoBtn" class="control-btn">↩️ Undo Move</button>
+            <button id="flipBtn" class="control-btn">↕️ Flip Board</button>
+        </div>
+
+        <!-- Analysis Display -->
+        <div class="analysis-section">
+            <div class="analysis-panel">
+                <h2>Top Engine Moves</h2>
+                <div id="engineMoves" class="moves-list">
+                    <p class="placeholder">Make a move to see engine analysis</p>
+                </div>
+            </div>
+            
+            <div class="analysis-panel">
+                <h2>Master Games</h2>
+                <div id="masterMoves" class="moves-list">
+                    <p class="placeholder">Make a move to see master games</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Info -->
+        <div class="status-info">
+            <div>Status: <span id="status">Ready</span></div>
+            <div>FEN: <span id="fen">-</span></div>
+            <div>Move History: <span id="moveHistory">-</span></div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"
+            integrity="sha384-ZvpUoO/+PpLXR1lu4jmpXWu80pZlYUAfxl5NsBMWOEPSjUn/6Z/hRTt8+pR6L4N2"
+            crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"
+            integrity="sha384-8Vi8VHwn3vjQ9eUHUxex3JSN/NFqUg3QbPyX8kWyb93+8AC/pPWTzj+nHtbC5bxD"
+            crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.js"></script>
+    <script src="js/app.js" defer></script>
+</body>
+</html>
+
+
