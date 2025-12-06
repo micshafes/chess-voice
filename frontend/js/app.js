@@ -350,7 +350,127 @@ function updateSoundButton() {
 // ===========================
 
 const VOICE_CORRECTIONS = {
-    // Common misrecognitions for squares
+    // Common misrecognitions for "a" column
+    'asics': 'a6',
+    'a six': 'a6',
+    'a-six': 'a6',
+    'a 6': 'a6',
+    'a-6': 'a6',
+    'ace six': 'a6',
+    'ace 6': 'a6',
+    'hey six': 'a6',
+    'hey 6': 'a6',
+    'ay six': 'a6',
+    'ay 6': 'a6',
+    'a for': 'a4',
+    'a-four': 'a4',
+    'a four': 'a4',
+    'a-4': 'a4',
+    'a 4': 'a4',
+    'hey four': 'a4',
+    'hey 4': 'a4',
+    'a five': 'a5',
+    'a-five': 'a5',
+    'a 5': 'a5',
+    'a-5': 'a5',
+    'a three': 'a3',
+    'a 3': 'a3',
+    'a two': 'a2',
+    'a 2': 'a2',
+    'a one': 'a1',
+    'a 1': 'a1',
+    'a seven': 'a7',
+    'a 7': 'a7',
+    'a eight': 'a8',
+    'a 8': 'a8',
+    // Common misrecognitions for "c" column - "see" is very common
+    'see one': 'c1',
+    'see 1': 'c1',
+    'sea one': 'c1',
+    'sea 1': 'c1',
+    'see two': 'c2',
+    'see 2': 'c2',
+    'sea two': 'c2',
+    'sea 2': 'c2',
+    'see three': 'c3',
+    'see 3': 'c3',
+    'sea three': 'c3',
+    'sea 3': 'c3',
+    'see four': 'c4',
+    'see 4': 'c4',
+    'sea four': 'c4',
+    'sea 4': 'c4',
+    'see for': 'c4',
+    'sea for': 'c4',
+    'see five': 'c5',
+    'see 5': 'c5',
+    'sea five': 'c5',
+    'sea 5': 'c5',
+    'see six': 'c6',
+    'see 6': 'c6',
+    'sea six': 'c6',
+    'sea 6': 'c6',
+    'see seven': 'c7',
+    'see 7': 'c7',
+    'sea seven': 'c7',
+    'sea 7': 'c7',
+    'see eight': 'c8',
+    'see 8': 'c8',
+    'sea eight': 'c8',
+    'sea 8': 'c8',
+    'c for': 'c4',
+    'c-four': 'c4',
+    'c four': 'c4',
+    'c-4': 'c4',
+    'c 4': 'c4',
+    'c 5': 'c5',
+    'c 6': 'c6',
+    'c 3': 'c3',
+    'c 2': 'c2',
+    'c 1': 'c1',
+    'c 7': 'c7',
+    'c 8': 'c8',
+    // Common misrecognitions for "b" column
+    'be one': 'b1',
+    'be 1': 'b1',
+    'bee one': 'b1',
+    'bee 1': 'b1',
+    'be two': 'b2',
+    'be 2': 'b2',
+    'bee two': 'b2',
+    'bee 2': 'b2',
+    'be three': 'b3',
+    'be 3': 'b3',
+    'bee three': 'b3',
+    'bee 3': 'b3',
+    'be four': 'b4',
+    'be 4': 'b4',
+    'bee four': 'b4',
+    'bee 4': 'b4',
+    'be for': 'b4',
+    'bee for': 'b4',
+    'be five': 'b5',
+    'be 5': 'b5',
+    'bee five': 'b5',
+    'bee 5': 'b5',
+    'be six': 'b6',
+    'be 6': 'b6',
+    'bee six': 'b6',
+    'bee 6': 'b6',
+    'be seven': 'b7',
+    'be 7': 'b7',
+    'bee seven': 'b7',
+    'bee 7': 'b7',
+    'be eight': 'b8',
+    'be 8': 'b8',
+    'bee eight': 'b8',
+    'bee 8': 'b8',
+    'b for': 'b4',
+    'b-four': 'b4',
+    'b four': 'b4',
+    'b-4': 'b4',
+    'b 4': 'b4',
+    // Common misrecognitions for "e" column
     'e-cigs': 'e6',
     'e cigs': 'e6',
     'e-cig': 'e6',
@@ -364,6 +484,19 @@ const VOICE_CORRECTIONS = {
     'e four': 'e4',
     'e-4': 'e4',
     'e 4': 'e4',
+    'e five': 'e5',
+    'e 5': 'e5',
+    'e three': 'e3',
+    'e 3': 'e3',
+    'e two': 'e2',
+    'e 2': 'e2',
+    'e one': 'e1',
+    'e 1': 'e1',
+    'e seven': 'e7',
+    'e 7': 'e7',
+    'e eight': 'e8',
+    'e 8': 'e8',
+    // Common misrecognitions for "d" column
     'd for': 'd4',
     'd-four': 'd4',
     'd four': 'd4',
@@ -373,31 +506,58 @@ const VOICE_CORRECTIONS = {
     'd-five': 'd5',
     'd-5': 'd5',
     'd 5': 'd5',
-    'c for': 'c4',
-    'c-four': 'c4',
-    'c four': 'c4',
-    'c-4': 'c4',
-    'c 4': 'c4',
+    'd six': 'd6',
+    'd 6': 'd6',
+    'd three': 'd3',
+    'd 3': 'd3',
+    'd two': 'd2',
+    'd 2': 'd2',
+    'd one': 'd1',
+    'd 1': 'd1',
+    'd seven': 'd7',
+    'd 7': 'd7',
+    'd eight': 'd8',
+    'd 8': 'd8',
+    // Common misrecognitions for "f" column
     'f for': 'f4',
     'f-four': 'f4',
     'f four': 'f4',
     'f-4': 'f4',
     'f 4': 'f4',
+    'f 5': 'f5',
+    'f 6': 'f6',
+    'f 3': 'f3',
+    'f 2': 'f2',
+    'f 1': 'f1',
+    'f 7': 'f7',
+    'f 8': 'f8',
+    // Common misrecognitions for "g" column
     'g for': 'g4',
     'g-four': 'g4',
     'g four': 'g4',
     'g-4': 'g4',
     'g 4': 'g4',
-    'a for': 'a4',
-    'a-four': 'a4',
-    'a four': 'a4',
-    'a-4': 'a4',
-    'a 4': 'a4',
-    'b for': 'b4',
-    'b-four': 'b4',
-    'b four': 'b4',
-    'b-4': 'b4',
-    'b 4': 'b4',
+    'gee four': 'g4',
+    'gee 4': 'g4',
+    'g 5': 'g5',
+    'g 6': 'g6',
+    'g 3': 'g3',
+    'g 2': 'g2',
+    'g 1': 'g1',
+    'g 7': 'g7',
+    'g 8': 'g8',
+    // Common misrecognitions for "h" column
+    'h 4': 'h4',
+    'h 5': 'h5',
+    'h 6': 'h6',
+    'h 3': 'h3',
+    'h 2': 'h2',
+    'h 1': 'h1',
+    'h 7': 'h7',
+    'h 8': 'h8',
+    'age four': 'h4',
+    'age 4': 'h4',
+    'ache four': 'h4',
     // Numbers
     'six': '6',
     'five': '5',
@@ -407,9 +567,14 @@ const VOICE_CORRECTIONS = {
     'one': '1',
     'seven': '7',
     'eight': '8',
-    // Common piece misrecognitions
+    // Common piece misrecognitions - Knight
     'night': 'knight',
     'nite': 'knight',
+    'knit': 'knight',
+    'neat': 'knight',
+    'knife': 'knight',
+    'lite': 'knight',
+    'right': 'knight',
     'knight f': 'nf',
     'knight e': 'ne',
     'knight d': 'nd',
@@ -418,6 +583,94 @@ const VOICE_CORRECTIONS = {
     'knight a': 'na',
     'knight g': 'ng',
     'knight h': 'nh',
+    'night f': 'nf',
+    'night e': 'ne',
+    'night d': 'nd',
+    'night c': 'nc',
+    'night b': 'nb',
+    'night a': 'na',
+    'night g': 'ng',
+    'night h': 'nh',
+    // Common piece misrecognitions - Rook
+    'brook': 'rook',
+    'brooke': 'rook',
+    'rock': 'rook',
+    'rookie': 'rook',
+    'ruck': 'rook',
+    'roof': 'rook',
+    'route': 'rook',
+    'root': 'rook',
+    'look': 'rook',
+    'brook f': 'rf',
+    'brook e': 're',
+    'brook d': 'rd',
+    'brook c': 'rc',
+    'brook b': 'rb',
+    'brook a': 'ra',
+    'brook g': 'rg',
+    'brook h': 'rh',
+    'rock f': 'rf',
+    'rock e': 're',
+    'rock d': 'rd',
+    'rock c': 'rc',
+    'rock b': 'rb',
+    'rock a': 'ra',
+    'rock g': 'rg',
+    'rock h': 'rh',
+    'rook f': 'rf',
+    'rook e': 're',
+    'rook d': 'rd',
+    'rook c': 'rc',
+    'rook b': 'rb',
+    'rook a': 'ra',
+    'rook g': 'rg',
+    'rook h': 'rh',
+    // Common piece misrecognitions - Bishop
+    'dish up': 'bishop',
+    'bishup': 'bishop',
+    'bish up': 'bishop',
+    'dish of': 'bishop',
+    'fish up': 'bishop',
+    'bishopric': 'bishop',
+    'bishoff': 'bishop',
+    'bishop f': 'bf',
+    'bishop e': 'be',
+    'bishop d': 'bd',
+    'bishop c': 'bc',
+    'bishop b': 'bb',
+    'bishop a': 'ba',
+    'bishop g': 'bg',
+    'bishop h': 'bh',
+    // Common piece misrecognitions - Queen
+    'green': 'queen',
+    'cream': 'queen',
+    'quean': 'queen',
+    'ween': 'queen',
+    'clean': 'queen',
+    'keen': 'queen',
+    'queen f': 'qf',
+    'queen e': 'qe',
+    'queen d': 'qd',
+    'queen c': 'qc',
+    'queen b': 'qb',
+    'queen a': 'qa',
+    'queen g': 'qg',
+    'queen h': 'qh',
+    // Common piece misrecognitions - King
+    'thing': 'king',
+    'sing': 'king',
+    'kin': 'king',
+    'keen': 'king',
+    'pink': 'king',
+    'ring': 'king',
+    'king f': 'kf',
+    'king e': 'ke',
+    'king d': 'kd',
+    'king c': 'kc',
+    'king b': 'kb',
+    'king a': 'ka',
+    'king g': 'kg',
+    'king h': 'kh',
     // Takes/captures
     'takes': 'x',
     'take': 'x',
@@ -447,14 +700,52 @@ function correctVoiceInput(text) {
     // Convert to lowercase for matching
     let corrected = text.toLowerCase().trim();
     
-    // Apply corrections
+    // Remove "check" from the end of moves (it's just annotation and can confuse parsing)
+    corrected = corrected.replace(/\s*check\s*$/gi, '');
+    corrected = corrected.replace(/\s*\+\s*$/gi, '');
+    
+    // Apply corrections from the dictionary
     for (const [wrong, correct] of Object.entries(VOICE_CORRECTIONS)) {
         // Replace whole word matches
         const regex = new RegExp(`\\b${wrong.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
         corrected = corrected.replace(regex, correct);
     }
     
-    // Also handle patterns like "e-cigs" -> "e6"
+    // Handle "see/sea" as "c" column (very common misrecognition)
+    corrected = corrected.replace(/\b(see|sea)[- ]?([1-8])\b/gi, 'c$2');
+    corrected = corrected.replace(/\b(see|sea)[- ]?(one)\b/gi, 'c1');
+    corrected = corrected.replace(/\b(see|sea)[- ]?(two)\b/gi, 'c2');
+    corrected = corrected.replace(/\b(see|sea)[- ]?(three)\b/gi, 'c3');
+    corrected = corrected.replace(/\b(see|sea)[- ]?(four|for)\b/gi, 'c4');
+    corrected = corrected.replace(/\b(see|sea)[- ]?(five)\b/gi, 'c5');
+    corrected = corrected.replace(/\b(see|sea)[- ]?(six)\b/gi, 'c6');
+    corrected = corrected.replace(/\b(see|sea)[- ]?(seven)\b/gi, 'c7');
+    corrected = corrected.replace(/\b(see|sea)[- ]?(eight)\b/gi, 'c8');
+    
+    // Handle "be/bee" as "b" column
+    corrected = corrected.replace(/\b(be|bee)[- ]?([1-8])\b/gi, 'b$2');
+    corrected = corrected.replace(/\b(be|bee)[- ]?(one)\b/gi, 'b1');
+    corrected = corrected.replace(/\b(be|bee)[- ]?(two)\b/gi, 'b2');
+    corrected = corrected.replace(/\b(be|bee)[- ]?(three)\b/gi, 'b3');
+    corrected = corrected.replace(/\b(be|bee)[- ]?(four|for)\b/gi, 'b4');
+    corrected = corrected.replace(/\b(be|bee)[- ]?(five)\b/gi, 'b5');
+    corrected = corrected.replace(/\b(be|bee)[- ]?(six)\b/gi, 'b6');
+    corrected = corrected.replace(/\b(be|bee)[- ]?(seven)\b/gi, 'b7');
+    corrected = corrected.replace(/\b(be|bee)[- ]?(eight)\b/gi, 'b8');
+    
+    // Handle "a" column misrecognitions (asics, hey, ay, ace)
+    corrected = corrected.replace(/\basics\b/gi, 'a6');
+    corrected = corrected.replace(/\b(hey|ay|ace)[- ]?([1-8])\b/gi, 'a$2');
+    corrected = corrected.replace(/\b(hey|ay|ace)[- ]?(one)\b/gi, 'a1');
+    corrected = corrected.replace(/\b(hey|ay|ace)[- ]?(two)\b/gi, 'a2');
+    corrected = corrected.replace(/\b(hey|ay|ace)[- ]?(three)\b/gi, 'a3');
+    corrected = corrected.replace(/\b(hey|ay|ace)[- ]?(four|for)\b/gi, 'a4');
+    corrected = corrected.replace(/\b(hey|ay|ace)[- ]?(five)\b/gi, 'a5');
+    corrected = corrected.replace(/\b(hey|ay|ace)[- ]?(six)\b/gi, 'a6');
+    corrected = corrected.replace(/\b(hey|ay|ace)[- ]?(seven)\b/gi, 'a7');
+    corrected = corrected.replace(/\b(hey|ay|ace)[- ]?(eight)\b/gi, 'a8');
+    
+    // Handle patterns like "e-cigs" -> "e6"
     corrected = corrected.replace(/\be[- ]?cigs?\b/gi, 'e6');
     corrected = corrected.replace(/\be[- ]?six\b/gi, 'e6');
     corrected = corrected.replace(/\be[- ]?for\b/gi, 'e4');
@@ -464,6 +755,32 @@ function correctVoiceInput(text) {
     corrected = corrected.replace(/\bg[- ]?for\b/gi, 'g4');
     corrected = corrected.replace(/\ba[- ]?for\b/gi, 'a4');
     corrected = corrected.replace(/\bb[- ]?for\b/gi, 'b4');
+    
+    // Handle "gee" as "g" column
+    corrected = corrected.replace(/\bgee[- ]?([1-8])\b/gi, 'g$1');
+    corrected = corrected.replace(/\bgee[- ]?(one)\b/gi, 'g1');
+    corrected = corrected.replace(/\bgee[- ]?(two)\b/gi, 'g2');
+    corrected = corrected.replace(/\bgee[- ]?(three)\b/gi, 'g3');
+    corrected = corrected.replace(/\bgee[- ]?(four|for)\b/gi, 'g4');
+    corrected = corrected.replace(/\bgee[- ]?(five)\b/gi, 'g5');
+    corrected = corrected.replace(/\bgee[- ]?(six)\b/gi, 'g6');
+    corrected = corrected.replace(/\bgee[- ]?(seven)\b/gi, 'g7');
+    corrected = corrected.replace(/\bgee[- ]?(eight)\b/gi, 'g8');
+    
+    // Handle piece name misrecognitions with regex
+    // Knight variations
+    corrected = corrected.replace(/\b(night|nite|knit|neat|knife)\b/gi, 'knight');
+    // Rook variations
+    corrected = corrected.replace(/\b(brook|brooke|rock|rookie|ruck|roof|route|root)\b/gi, 'rook');
+    // Bishop variations  
+    corrected = corrected.replace(/\b(dish ?up|bish ?up|bishup|fish ?up)\b/gi, 'bishop');
+    // Queen variations
+    corrected = corrected.replace(/\b(quean|ween)\b/gi, 'queen');
+    // Note: "green", "cream", "clean" are too common as regular words, kept only in dictionary
+    
+    // Handle piece + column patterns (e.g., "brook to e4" -> "rook to e4")
+    corrected = corrected.replace(/\b(night|nite)[- ]?([a-h])/gi, 'knight $2');
+    corrected = corrected.replace(/\b(brook|brooke|rock)[- ]?([a-h])/gi, 'rook $2');
     
     return corrected;
 }
