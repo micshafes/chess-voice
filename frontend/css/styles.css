@@ -72,6 +72,15 @@ h1 {
     animation: pulse 1.5s infinite;
 }
 
+.voice-btn.paused {
+    background: #f39c12;
+    animation: none;
+}
+
+.voice-btn.paused:hover {
+    background: #e67e22;
+}
+
 @keyframes pulse {
     0%, 100% { transform: scale(1); }
     50% { transform: scale(1.05); }
@@ -185,6 +194,30 @@ h1 {
     grid-template-columns: 1fr 1fr;
     gap: 10px;
     margin: 10px 0;
+}
+
+/* Engine play mode - blur analysis to prevent cheating */
+.analysis-section.engine-mode .analysis-panel {
+    filter: blur(8px);
+    pointer-events: none;
+    user-select: none;
+    position: relative;
+}
+
+.analysis-section.engine-mode .analysis-panel::after {
+    content: '🎮 Engine Mode';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(102, 126, 234, 0.9);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.9em;
+    filter: blur(0);
+    z-index: 10;
 }
 
 .analysis-panel {

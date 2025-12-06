@@ -13,6 +13,18 @@ let soundEnabled = true;
 let moveSound = null;
 let captureSound = null;
 
+// Store last engine analysis for "takes" command
+let lastEngineMoves = [];
+
+// Pause mode - ignores all commands except "resume"
+let isPaused = false;
+
+// Engine play mode: null = analysis mode, 'w' = engine plays white, 'b' = engine plays black
+let enginePlaysColor = null;
+
+// Store last master moves for engine play
+let lastMasterMoves = [];
+
 // ===========================
 // Initialization
 // ===========================
@@ -263,10 +275,32 @@ function updateVoiceUI() {
     const btn = document.getElementById('voiceBtn');
     const btnText = document.getElementById('voiceBtnText');
     
-    if (isListening) {
+    if (isPaused) {
+        btnText.textContent = '⏸️ Paused';
+        btn.classList.add('paused');
+    } else if (isListening) {
         btnText.textContent = '🎤 Listening...';
+        btn.classList.remove('paused');
     } else {
         btnText.textContent = '🎤 Start Voice';
+        btn.classList.remove('paused');
+    }
+}
+
+function updatePauseUI() {
+    const btn = document.getElementById('voiceBtn');
+    const btnText = document.getElementById('voiceBtnText');
+    
+    if (isPaused) {
+        btnText.textContent = '⏸️ Paused';
+        btn.classList.add('paused');
+        btn.classList.remove('listening');
+    } else {
+        btn.classList.remove('paused');
+        if (isListening) {
+            btnText.textContent = '🎤 Listening...';
+            btn.classList.add('listening');
+        }
     }
 }
 
@@ -648,6 +682,27 @@ const VOICE_CORRECTIONS = {
     'ween': 'queen',
     'clean': 'queen',
     'keen': 'queen',
+    // "queenie" patterns - common voice misrecognition
+    'queenie': 'queen e',
+    'queeny': 'queen e',
+    'queeni': 'queen e',
+    'greeny': 'queen e',
+    'queenie 1': 'qe1',
+    'queenie 2': 'qe2',
+    'queenie 3': 'qe3',
+    'queenie 4': 'qe4',
+    'queenie 5': 'qe5',
+    'queenie 6': 'qe6',
+    'queenie 7': 'qe7',
+    'queenie 8': 'qe8',
+    // Similar patterns for other columns
+    'queena': 'queen a',
+    'queenb': 'queen b',
+    'queenc': 'queen c',
+    'queend': 'queen d',
+    'queenf': 'queen f',
+    'queeng': 'queen g',
+    'queenh': 'queen h',
     'queen f': 'qf',
     'queen e': 'qe',
     'queen d': 'qd',
@@ -782,7 +837,224 @@ function correctVoiceInput(text) {
     corrected = corrected.replace(/\b(night|nite)[- ]?([a-h])/gi, 'knight $2');
     corrected = corrected.replace(/\b(brook|brooke|rock)[- ]?([a-h])/gi, 'rook $2');
     
+    // Handle "queenie" patterns (queen + e merged)
+    corrected = corrected.replace(/\bqueenie\s*([1-8])\b/gi, 'qe$1');
+    corrected = corrected.replace(/\bqueeny\s*([1-8])\b/gi, 'qe$1');
+    corrected = corrected.replace(/\bqueenie\b/gi, 'queen e');
+    corrected = corrected.replace(/\bqueeny\b/gi, 'queen e');
+    
+    // Handle "piece + column + to + square" patterns (e.g., "knight g to e2" -> "knight g e2")
+    // Remove "to" between disambiguation and target square
+    corrected = corrected.replace(/\b(knight|bishop|rook|queen|king)\s+([a-h])\s+to\s+([a-h][1-8])\b/gi, '$1 $2 $3');
+    corrected = corrected.replace(/\b([nbrqk])\s*([a-h])\s+to\s+([a-h][1-8])\b/gi, '$1$2$3');
+    
+    // Also handle "piece to square" (e.g., "knight to f3")
+    corrected = corrected.replace(/\b(knight|bishop|rook|queen|king)\s+to\s+([a-h][1-8])\b/gi, '$1 $2');
+    
     return corrected;
+}
+
+// ===========================
+// Speech Synthesis
+// ===========================
+
+function speakMove(moveText) {
+    if ('speechSynthesis' in window) {
+        // Cancel any ongoing speech
+        window.speechSynthesis.cancel();
+        
+        // Convert chess notation to spoken words
+        let spoken = moveText
+            .replace(/K/g, 'King ')
+            .replace(/Q/g, 'Queen ')
+            .replace(/R/g, 'Rook ')
+            .replace(/B/g, 'Bishop ')
+            .replace(/N/g, 'Knight ')
+            .replace(/x/g, ' takes ')
+            .replace(/\+/g, ', check')
+            .replace(/#/g, ', checkmate')
+            .replace(/O-O-O/g, 'queenside castle')
+            .replace(/O-O/g, 'kingside castle')
+            .replace(/=/g, ' promotes to ');
+        
+        // Add spaces between letters and numbers for clarity
+        spoken = spoken.replace(/([a-h])([1-8])/g, '$1 $2');
+        
+        const utterance = new SpeechSynthesisUtterance(spoken);
+        utterance.rate = 0.9;
+        utterance.pitch = 1;
+        window.speechSynthesis.speak(utterance);
+    }
+}
+
+// ===========================
+// Engine Play Mode
+// ===========================
+
+function weightedRandomSelect(items, weights) {
+    // Normalize weights to sum to 1
+    const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+    if (totalWeight === 0) return items[0];
+    
+    const normalizedWeights = weights.map(w => w / totalWeight);
+    
+    // Random selection based on weights
+    const random = Math.random();
+    let cumulative = 0;
+    
+    for (let i = 0; i < items.length; i++) {
+        cumulative += normalizedWeights[i];
+        if (random <= cumulative) {
+            return items[i];
+        }
+    }
+    
+    return items[items.length - 1];
+}
+
+function selectEnginePlayMove() {
+    // Priority 1: Use master games if available (weighted by game count)
+    if (lastMasterMoves && lastMasterMoves.length > 0) {
+        const moves = lastMasterMoves.map(m => m.move);
+        const weights = lastMasterMoves.map(m => m.total || 1);
+        
+        console.log('Selecting from master moves:', moves, weights);
+        return weightedRandomSelect(moves, weights);
+    }
+    
+    // Priority 2: Use engine moves (weighted by evaluation - better = higher weight)
+    if (lastEngineMoves && lastEngineMoves.length > 0) {
+        const moves = lastEngineMoves.map(m => m.move);
+        
+        // Convert evaluations to weights (higher eval = higher weight)
+        // Use exponential weighting so best moves are much more likely
+        const weights = lastEngineMoves.map((m, index) => {
+            // First move gets weight 8, second 4, third 2, etc.
+            return Math.pow(2, lastEngineMoves.length - index);
+        });
+        
+        console.log('Selecting from engine moves:', moves, weights);
+        return weightedRandomSelect(moves, weights);
+    }
+    
+    return null;
+}
+
+async function makeEngineMoveIfNeeded() {
+    if (!enginePlaysColor || !game) return;
+    
+    // Check if it's the engine's turn
+    if (game.turn() !== enginePlaysColor) return;
+    
+    // Wait a moment for analysis to complete
+    await new Promise(resolve => setTimeout(resolve, 800));
+    
+    const moveToPlay = selectEnginePlayMove();
+    
+    if (moveToPlay) {
+        console.log('Engine playing:', moveToPlay);
+        
+        try {
+            const result = game.move(moveToPlay);
+            if (result) {
+                // Speak the move
+                speakMove(result.san);
+                
+                // Play sound
+                playMoveSound({ isCapture: result.captured !== undefined });
+                
+                if (board) {
+                    requestAnimationFrame(() => {
+                        board.position(game.fen());
+                    });
+                }
+                
+                updateStatus();
+                document.getElementById('voiceStatus').textContent = `Engine played: ${result.san}`;
+                
+                // Analyze new position (for next engine move if game continues)
+                analyzePosition();
+            }
+        } catch (error) {
+            console.error('Error making engine move:', error);
+        }
+    } else {
+        document.getElementById('voiceStatus').textContent = 'Engine has no moves available.';
+    }
+}
+
+function setEngineMode(color) {
+    enginePlaysColor = color;
+    updateEngineModeUI();
+    
+    if (color) {
+        document.getElementById('voiceStatus').textContent = 
+            `Engine plays ${color === 'w' ? 'White' : 'Black'}. You play ${color === 'w' ? 'Black' : 'White'}.`;
+        
+        // If it's engine's turn, make a move
+        if (game && game.turn() === color) {
+            // Need to analyze first, then move
+            analyzePosition().then(() => {
+                setTimeout(makeEngineMoveIfNeeded, 500);
+            });
+        }
+    } else {
+        document.getElementById('voiceStatus').textContent = 'Analysis mode. Both sides shown.';
+    }
+}
+
+function updateEngineModeUI() {
+    const analysisSection = document.querySelector('.analysis-section');
+    
+    if (enginePlaysColor) {
+        // Engine mode - blur the analysis panels
+        analysisSection.classList.add('engine-mode');
+    } else {
+        // Analysis mode - show panels normally
+        analysisSection.classList.remove('engine-mode');
+    }
+}
+
+// ===========================
+// Move Parsing Helpers
+// ===========================
+
+// Find all pawns that can capture on a given square
+function findPawnCaptures(targetSquare) {
+    if (!game) return [];
+    
+    const legalMoves = game.moves({ verbose: true });
+    const pawnCaptures = legalMoves.filter(move => 
+        move.piece === 'p' && 
+        move.to === targetSquare.toLowerCase() && 
+        move.captured
+    );
+    
+    return pawnCaptures;
+}
+
+// Find all legal captures in the current position
+function findAllCaptures() {
+    if (!game) return [];
+    
+    const legalMoves = game.moves({ verbose: true });
+    return legalMoves.filter(move => move.captured);
+}
+
+// Get the top engine capture move (if the top move is a capture)
+function getTopEngineCapture() {
+    if (!lastEngineMoves || lastEngineMoves.length === 0) return null;
+    
+    const topMove = lastEngineMoves[0];
+    if (!topMove || !topMove.move) return null;
+    
+    // Check if the top engine move is a capture
+    const moveStr = topMove.move;
+    if (moveStr.includes('x')) {
+        return moveStr;
+    }
+    
+    return null;
 }
 
 // ===========================
@@ -802,6 +1074,34 @@ function parseAndMakeMove(voiceText) {
     text = correctVoiceInput(text);
     
     console.log(`Original: "${voiceText}" -> Corrected: "${text}"`);
+    
+    // Handle resume command first (works even when paused)
+    const resumeCommands = ['resume', 'unpause', 'continue', 'start listening', 'listen'];
+    if (resumeCommands.some(cmd => text.includes(cmd))) {
+        if (isPaused) {
+            isPaused = false;
+            updatePauseUI();
+            document.getElementById('voiceStatus').textContent = 'Resumed! Listening for moves...';
+        } else {
+            document.getElementById('voiceStatus').textContent = 'Already listening.';
+        }
+        return;
+    }
+    
+    // Handle pause command
+    const pauseCommands = ['pause', 'stop listening', 'hold on', 'wait'];
+    if (pauseCommands.some(cmd => text.includes(cmd))) {
+        isPaused = true;
+        updatePauseUI();
+        document.getElementById('voiceStatus').textContent = 'Paused. Say "resume" to continue.';
+        return;
+    }
+    
+    // If paused, ignore all other commands
+    if (isPaused) {
+        document.getElementById('voiceStatus').textContent = 'Paused. Say "resume" to continue.';
+        return;
+    }
     
     // Handle voice commands first (before parsing as moves)
     // Check for exact matches or phrases containing these commands
@@ -846,11 +1146,129 @@ function parseAndMakeMove(voiceText) {
         return;
     }
     
+    // Handle engine play mode commands
+    if (text.includes('engine plays white') || text.includes('computer plays white') || 
+        text.includes('play against white') || text.includes('engine white')) {
+        setEngineMode('w');
+        return;
+    }
+    
+    if (text.includes('engine plays black') || text.includes('computer plays black') || 
+        text.includes('play against black') || text.includes('engine black')) {
+        setEngineMode('b');
+        return;
+    }
+    
+    if (text.includes('analysis mode') || text.includes('analyze mode') || 
+        text.includes('stop engine') || text.includes('two player') || text.includes('2 player')) {
+        setEngineMode(null);
+        return;
+    }
+    
     // Remove common filler words (but keep chess notation)
     const cleaned = text.replace(/\b(move|play|to|the|square)\b/gi, ' ').trim();
     
     // Try to parse as standard algebraic notation
     let move = null;
+    
+    // Handle "just takes" - use top engine move if it's a capture, or only legal capture
+    if (/^(takes|capture|captures|x)$/i.test(cleaned.trim())) {
+        // First, check if there's only one legal capture
+        const allCaptures = findAllCaptures();
+        
+        if (allCaptures.length === 1) {
+            // Only one capture available, make it
+            const captureMove = allCaptures[0];
+            try {
+                const result = game.move(captureMove);
+                if (result) {
+                    playMoveSound({ isCapture: true });
+                    if (board) {
+                        requestAnimationFrame(() => {
+                            board.position(game.fen());
+                        });
+                    }
+                    updateStatus();
+                    analyzePosition();
+                    document.getElementById('voiceStatus').textContent = `Move made: ${result.san}`;
+                    return;
+                }
+            } catch (error) {
+                console.error('Error making capture:', error);
+            }
+        } else if (allCaptures.length > 1) {
+            // Multiple captures - try using top engine move
+            const topCapture = getTopEngineCapture();
+            if (topCapture) {
+                try {
+                    const result = game.move(topCapture);
+                    if (result) {
+                        playMoveSound({ isCapture: true });
+                        if (board) {
+                            requestAnimationFrame(() => {
+                                board.position(game.fen());
+                            });
+                        }
+                        updateStatus();
+                        analyzePosition();
+                        document.getElementById('voiceStatus').textContent = `Move made: ${result.san} (top engine capture)`;
+                        return;
+                    }
+                } catch (error) {
+                    console.error('Error making top engine capture:', error);
+                }
+            }
+            // If no top engine capture, inform user
+            document.getElementById('voiceStatus').textContent = 
+                `Multiple captures available (${allCaptures.length}). Please specify which piece takes where.`;
+            return;
+        } else {
+            document.getElementById('voiceStatus').textContent = 'No captures available in this position.';
+            return;
+        }
+    }
+    
+    // Handle "pawn takes [square]"
+    const pawnTakesMatch = cleaned.match(/\b(?:pawn\s*)?(?:takes|x|captures?)\s*([a-h][1-8])\b/i);
+    if (pawnTakesMatch || (text.includes('pawn') && (text.includes('takes') || text.includes('capture')))) {
+        // Extract target square
+        const squareMatch = cleaned.match(/([a-h][1-8])/i);
+        if (squareMatch) {
+            const targetSquare = squareMatch[1].toLowerCase();
+            const pawnCaptures = findPawnCaptures(targetSquare);
+            
+            if (pawnCaptures.length === 1) {
+                // Only one pawn can capture - make the move
+                try {
+                    const result = game.move(pawnCaptures[0]);
+                    if (result) {
+                        playMoveSound({ isCapture: true });
+                        if (board) {
+                            requestAnimationFrame(() => {
+                                board.position(game.fen());
+                            });
+                        }
+                        updateStatus();
+                        analyzePosition();
+                        document.getElementById('voiceStatus').textContent = `Move made: ${result.san}`;
+                        return;
+                    }
+                } catch (error) {
+                    console.error('Error making pawn capture:', error);
+                }
+            } else if (pawnCaptures.length > 1) {
+                // Multiple pawns can capture - need disambiguation
+                const files = pawnCaptures.map(m => m.from[0]).join(' or ');
+                document.getElementById('voiceStatus').textContent = 
+                    `Two pawns can take on ${targetSquare}. Say "${pawnCaptures[0].from[0]} takes ${targetSquare}" or "${pawnCaptures[1].from[0]} takes ${targetSquare}"`;
+                return;
+            } else if (pawnCaptures.length === 0) {
+                document.getElementById('voiceStatus').textContent = 
+                    `No pawn can capture on ${targetSquare}.`;
+                return;
+            }
+        }
+    }
     
     // Handle special cases
     if (text.includes('castle') || text.includes('castles')) {
@@ -996,6 +1414,11 @@ async function analyzePosition() {
         
         displayEngineMoves(engineData.moves || []);
         displayMasterMoves(masterData);
+        
+        // If in engine play mode, make engine's move after analysis
+        if (enginePlaysColor && game.turn() === enginePlaysColor) {
+            setTimeout(makeEngineMoveIfNeeded, 600);
+        }
     } catch (error) {
         console.error('Error fetching analysis:', error);
         document.getElementById('engineMoves').innerHTML = 
@@ -1007,6 +1430,9 @@ async function analyzePosition() {
 
 function displayEngineMoves(moves) {
     const container = document.getElementById('engineMoves');
+    
+    // Store for "takes" voice command
+    lastEngineMoves = moves || [];
     
     if (!moves || moves.length === 0) {
         container.innerHTML = '<p class="placeholder">No moves found</p>';
@@ -1034,12 +1460,16 @@ function displayEngineMoves(moves) {
 function displayMasterMoves(data) {
     const container = document.getElementById('masterMoves');
     
+    // Store for engine play mode
+    lastMasterMoves = (data && data.moves) ? data.moves : [];
+    
     if (data.error) {
         container.innerHTML = `<p class="placeholder">Error: ${data.error}</p>`;
         return;
     }
     
     if (!data.found || !data.moves || data.moves.length === 0) {
+        lastMasterMoves = []; // Clear if no moves found
         container.innerHTML = '<p class="placeholder">Position not found in Lichess master games database</p>';
         return;
     }
