@@ -20,6 +20,9 @@ let lastEngineMoves = [];
 // Pause mode - ignores all commands except "resume"
 let isPaused = false;
 
+// Flag to prevent recognition.onend from updating UI while processing a command
+let isProcessingVoiceCommand = false;
+
 // Engine play mode: null = analysis mode, 'w' = engine plays white, 'b' = engine plays black
 let enginePlaysColor = null;
 
@@ -266,6 +269,9 @@ function initializeVoiceRecognition() {
         const transcript = event.results[0][0].transcript.trim();
         document.getElementById('voiceTranscript').textContent = `Heard: "${transcript}"`;
         
+        // Mark that we're processing a command (prevents onend from updating UI)
+        isProcessingVoiceCommand = true;
+        
         // Stop recognition immediately to prevent appending new speech
         try {
             recognition.stop();
@@ -276,11 +282,56 @@ function initializeVoiceRecognition() {
         // Parse and make move
         setTimeout(() => {
             parseAndMakeMove(transcript);
+            // Clear the flag after a delay to allow speakMove to set isSpeaking
+            setTimeout(() => {
+                isProcessingVoiceCommand = false;
+                
+                // If not speaking, we need to restart recognition ourselves
+                // (since onend returned early and didn't restart)
+                if (!isSpeaking) {
+                    const btn = document.getElementById('voiceBtn');
+                    if (btn.classList.contains('listening')) {
+                        // Mark that recognition has stopped (onend returned early so didn't set this)
+                        isListening = false;
+                        
+                        setTimeout(() => {
+                            // Double-check we're still not speaking and button still shows listening
+                            if (!isSpeaking && btn.classList.contains('listening')) {
+                                try {
+                                    recognition.start();
+                                    isListening = true;
+                                    console.log('Restarted recognition after command processing');
+                                } catch (e) {
+                                    console.log('Could not restart recognition after command:', e);
+                                    // Try again after a longer delay
+                                    setTimeout(() => {
+                                        if (!isSpeaking && btn.classList.contains('listening')) {
+                                            try {
+                                                recognition.start();
+                                                isListening = true;
+                                                console.log('Restarted recognition on retry');
+                                            } catch (e2) {
+                                                console.error('Failed to restart recognition:', e2);
+                                            }
+                                        }
+                                    }, 300);
+                                }
+                            }
+                        }, 100);
+                    }
+                }
+            }, 100);
         }, 50);
     };
     
     recognition.onerror = (event) => {
         console.error('Speech recognition error:', event.error);
+        
+        // Don't update UI if we're speaking or processing - these errors are expected
+        if (isSpeaking || isProcessingVoiceCommand) {
+            console.log('Recognition error while speaking/processing - ignoring:', event.error);
+            return;
+        }
         
         // Handle different error types
         switch (event.error) {
@@ -288,7 +339,7 @@ function initializeVoiceRecognition() {
                 // Aborted is often caused by rapid restarts or system issues
                 // Don't show error to user, just try to restart gracefully
                 console.log('Recognition aborted, will restart...');
-                break;
+                return; // Don't update UI for aborted
             case 'no-speech':
                 document.getElementById('voiceStatus').textContent = 'No speech detected. Try again.';
                 break;
@@ -316,16 +367,16 @@ function initializeVoiceRecognition() {
     };
     
     recognition.onend = () => {
-        isListening = false;
-        updateVoiceUI();
-        
         const btn = document.getElementById('voiceBtn');
         
-        // Don't restart if engine is speaking (it will restart after speech ends)
-        if (isSpeaking) {
-            console.log('Recognition ended while engine speaking - will resume after speech');
+        // Don't update UI or restart if engine is speaking or processing a voice command
+        if (isSpeaking || isProcessingVoiceCommand) {
+            console.log('Recognition ended while speaking/processing - will resume after');
             return;
         }
+        
+        isListening = false;
+        updateVoiceUI();
         
         if (btn.classList.contains('listening') && !recognitionRestarting) {
             // Restart quickly for short commands - reduced delay for faster response
@@ -1089,8 +1140,13 @@ function correctVoiceInput(text) {
     
     // Handle "piece + column + to + square" patterns (e.g., "knight g to e2" -> "knight g e2")
     // Remove "to" between disambiguation and target square
-    corrected = corrected.replace(/\b(knight|bishop|rook|queen|king)\s+([a-h])\s+to\s+([a-h][1-8])\b/gi, '$1 $2 $3');
-    corrected = corrected.replace(/\b([nbrqk])\s*([a-h])\s+to\s+([a-h][1-8])\b/gi, '$1$2$3');
+    // Also handle "two" being heard as "to" (e.g., "knight b two d2")
+    corrected = corrected.replace(/\b(knight|bishop|rook|queen|king)\s+([a-h])\s+(?:to|two)\s+([a-h][1-8])\b/gi, '$1 $2$3');
+    corrected = corrected.replace(/\b([nbrqk])\s*([a-h])\s+(?:to|two)\s+([a-h][1-8])\b/gi, '$1$2$3');
+    
+    // Handle "piece + column + square" without "to" (e.g., "knight b d2" -> "knight bd2")
+    corrected = corrected.replace(/\b(knight|bishop|rook|queen|king)\s+([a-h])\s+([a-h][1-8])\b/gi, '$1 $2$3');
+    corrected = corrected.replace(/\b([nbrqk])\s*([a-h])\s+([a-h][1-8])\b/gi, '$1$2$3');
     
     // Also handle "piece to square" (e.g., "knight to f3")
     corrected = corrected.replace(/\b(knight|bishop|rook|queen|king)\s+to\s+([a-h][1-8])\b/gi, '$1 $2');
@@ -1112,8 +1168,11 @@ function speakMove(moveText) {
             window.speechSynthesis.cancel();
             window.speechSynthesis.resume();
             
-            // Pause voice recognition while speaking
+            // Set isSpeaking BEFORE stopping recognition to prevent onend handler from updating UI
             const wasListening = isListening;
+            isSpeaking = true;
+            
+            // Pause voice recognition while speaking
             if (recognition && wasListening) {
                 try {
                     recognition.stop();
@@ -1121,7 +1180,6 @@ function speakMove(moveText) {
                     console.log('Could not stop recognition for speech:', e);
                 }
             }
-            isSpeaking = true;
             
             // Convert chess notation to spoken words
             let spoken = moveText
@@ -1146,13 +1204,31 @@ function speakMove(moveText) {
             
             utterance.onend = () => {
                 isSpeaking = false;
+                isProcessingVoiceCommand = false;
                 // Resume voice recognition after a short delay
                 setTimeout(() => {
-                    if (wasListening && document.getElementById('voiceBtn').classList.contains('listening')) {
+                    const btn = document.getElementById('voiceBtn');
+                    // Restart if we were listening before OR if button still shows listening state
+                    if (wasListening || btn.classList.contains('listening')) {
                         try {
                             recognition.start();
+                            btn.classList.add('listening');
+                            isListening = true;
+                            console.log('Restarted recognition after speech');
                         } catch (e) {
                             console.log('Could not restart recognition after speech:', e);
+                            // Retry after a longer delay
+                            setTimeout(() => {
+                                if (btn.classList.contains('listening')) {
+                                    try {
+                                        recognition.start();
+                                        isListening = true;
+                                        console.log('Restarted recognition on retry after speech');
+                                    } catch (e2) {
+                                        console.error('Failed to restart recognition after speech:', e2);
+                                    }
+                                }
+                            }, 300);
                         }
                     }
                     resolve();
@@ -1161,12 +1237,30 @@ function speakMove(moveText) {
             
             utterance.onerror = () => {
                 isSpeaking = false;
+                isProcessingVoiceCommand = false;
                 setTimeout(() => {
-                    if (wasListening && document.getElementById('voiceBtn').classList.contains('listening')) {
+                    const btn = document.getElementById('voiceBtn');
+                    // Restart if we were listening before OR if button still shows listening state
+                    if (wasListening || btn.classList.contains('listening')) {
                         try {
                             recognition.start();
+                            btn.classList.add('listening');
+                            isListening = true;
+                            console.log('Restarted recognition after speech error');
                         } catch (e) {
                             console.log('Could not restart recognition after speech error:', e);
+                            // Retry after a longer delay
+                            setTimeout(() => {
+                                if (btn.classList.contains('listening')) {
+                                    try {
+                                        recognition.start();
+                                        isListening = true;
+                                        console.log('Restarted recognition on retry after speech error');
+                                    } catch (e2) {
+                                        console.error('Failed to restart recognition after speech error:', e2);
+                                    }
+                                }
+                            }, 300);
                         }
                     }
                     resolve();
@@ -1282,6 +1376,9 @@ function selectEnginePlayMove() {
         const justLeftBook = wasInBook && enginePlaysColor;
         wasInBook = false;
         
+        // Clear grandmaster info since this is an engine move, not a book move
+        lastGrandmasterInfo = null;
+        
         const moves = lastEngineMoves.map(m => m.move);
         
         // Convert evaluations to weights (higher eval = higher weight)
@@ -1360,8 +1457,8 @@ async function makeEngineMoveIfNeeded() {
                 const source = selection.fromBook ? '(book)' : '(engine)';
                 let statusText = `Engine played: ${result.san} ${source}`;
                 
-                // Show grandmaster info if in grandmaster mode
-                if (grandmasterMode && lastGrandmasterInfo) {
+                // Show grandmaster info if in grandmaster mode and move is from book
+                if (grandmasterMode && selection.fromBook && lastGrandmasterInfo) {
                     statusText += ` (${lastGrandmasterInfo.name} ${lastGrandmasterInfo.rating})`;
                     updateGrandmasterDisplay(lastGrandmasterInfo);
                 } else {
@@ -1810,6 +1907,67 @@ function parseAndMakeMove(voiceText) {
             toggleDarkMode();
         }
         document.getElementById('voiceStatus').textContent = 'Light mode enabled';
+        return;
+    }
+    
+    // Handle "top move" - play the top engine move
+    if (text.includes('top move') || text.includes('best move') || text.includes('engine move')) {
+        if (lastEngineMoves && lastEngineMoves.length > 0) {
+            const topMove = lastEngineMoves[0].move;
+            try {
+                const result = game.move(topMove);
+                if (result) {
+                    // Set isSpeaking early to prevent recognition.onend from updating UI
+                    isSpeaking = true;
+                    playMoveSound({ isCapture: result.captured !== undefined });
+                    if (board) {
+                        requestAnimationFrame(() => {
+                            board.position(game.fen());
+                        });
+                    }
+                    updateStatus();
+                    analyzePosition();
+                    document.getElementById('voiceStatus').textContent = `Top move: ${result.san}`;
+                    speakMove(result.san);
+                    return;
+                }
+            } catch (error) {
+                console.error('Error making top move:', error);
+            }
+        }
+        document.getElementById('voiceStatus').textContent = 'No engine analysis available yet';
+        return;
+    }
+    
+    // Handle "master move" - play the most common master move
+    if (text.includes('master move') || text.includes('book move')) {
+        if (lastMasterMoves && lastMasterMoves.length > 0) {
+            // Find the move with highest total games (most common)
+            const sortedMoves = [...lastMasterMoves].sort((a, b) => (b.total || 0) - (a.total || 0));
+            const topMasterMove = sortedMoves[0].move;
+            try {
+                const result = game.move(topMasterMove);
+                if (result) {
+                    // Set isSpeaking early to prevent recognition.onend from updating UI
+                    isSpeaking = true;
+                    playMoveSound({ isCapture: result.captured !== undefined });
+                    if (board) {
+                        requestAnimationFrame(() => {
+                            board.position(game.fen());
+                        });
+                    }
+                    updateStatus();
+                    analyzePosition();
+                    const gameCount = sortedMoves[0].total || 0;
+                    document.getElementById('voiceStatus').textContent = `Master move: ${result.san} (${gameCount} games)`;
+                    speakMove(result.san);
+                    return;
+                }
+            } catch (error) {
+                console.error('Error making master move:', error);
+            }
+        }
+        document.getElementById('voiceStatus').textContent = 'No master games found for this position';
         return;
     }
     
