@@ -56,6 +56,56 @@
             </button>
         </div>
 
+        <!-- Engine Mode Controls -->
+        <div class="engine-controls" id="engineControls">
+            <div class="engine-control-group">
+                <button id="engineModeBtn" class="engine-mode-btn" title="Toggle engine mode">
+                    <span id="engineModeText">Analysis Mode</span>
+                </button>
+            </div>
+            <div class="engine-control-group" id="engineColorGroup" style="display: none;">
+                <label class="engine-label">Engine plays:</label>
+                <div class="color-selector">
+                    <button id="engineWhiteBtn" class="color-btn" data-color="w">White</button>
+                    <button id="engineBlackBtn" class="color-btn" data-color="b">Black</button>
+                </div>
+            </div>
+            <div class="engine-control-group" id="grandmasterGroup" style="display: none;">
+                <label class="engine-label">
+                    <input type="checkbox" id="grandmasterModeCheckbox">
+                    <span>Grandmaster Mode</span>
+                </label>
+            </div>
+            <div class="engine-control-group" id="grandmasterInfoGroup" style="display: none;">
+                <div id="grandmasterInfo" class="grandmaster-info"></div>
+            </div>
+        </div>
+
+        <!-- Analysis Display -->
+        <div class="analysis-section">
+            <div class="analysis-panel">
+                <h2>Top Engine Moves</h2>
+                <div id="engineMoves" class="moves-list">
+                    <p class="placeholder">Make a move to see engine analysis</p>
+                </div>
+            </div>
+            
+            <div class="analysis-panel">
+                <h2>Master Games</h2>
+                <div id="masterMoves" class="moves-list">
+                    <p class="placeholder">Make a move to see master games</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Info -->
+        <div class="status-info">
+            <div>Status: <span id="status">Ready</span></div>
+            <div>FEN: <span id="fen">-</span></div>
+            <div>Move History: <span id="moveHistory">-</span></div>
+        </div>
+    </div>
+
     <!-- Commands Help Modal -->
     <div id="commandsModal" class="modal">
         <div class="modal-content">
@@ -93,7 +143,12 @@
                     <ul>
                         <li><strong>"engine plays white"</strong> - Play as Black vs engine</li>
                         <li><strong>"engine plays black"</strong> - Play as White vs engine</li>
+                        <li><strong>"grandmaster plays white"</strong> - Play as Black vs grandmaster</li>
+                        <li><strong>"grandmaster plays black"</strong> - Play as White vs grandmaster</li>
                         <li><strong>"analysis mode"</strong> - Return to two-player</li>
+                        <li><strong>"grandmaster mode"</strong> - Toggle grandmaster mode (engine mode only)</li>
+                        <li><strong>"enable grandmaster"</strong> - Turn on grandmaster mode</li>
+                        <li><strong>"disable grandmaster"</strong> - Turn off grandmaster mode</li>
                     </ul>
                 </div>
                 
@@ -110,31 +165,6 @@
             </div>
             
             <p class="modal-tip">💡 <strong>Tip:</strong> Speak clearly and pause briefly between words for best recognition.</p>
-        </div>
-    </div>
-
-        <!-- Analysis Display -->
-        <div class="analysis-section">
-            <div class="analysis-panel">
-                <h2>Top Engine Moves</h2>
-                <div id="engineMoves" class="moves-list">
-                    <p class="placeholder">Make a move to see engine analysis</p>
-                </div>
-            </div>
-            
-            <div class="analysis-panel">
-                <h2>Master Games</h2>
-                <div id="masterMoves" class="moves-list">
-                    <p class="placeholder">Make a move to see master games</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Status Info -->
-        <div class="status-info">
-            <div>Status: <span id="status">Ready</span></div>
-            <div>FEN: <span id="fen">-</span></div>
-            <div>Move History: <span id="moveHistory">-</span></div>
         </div>
     </div>
 

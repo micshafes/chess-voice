@@ -23,8 +23,13 @@ let isPaused = false;
 // Engine play mode: null = analysis mode, 'w' = engine plays white, 'b' = engine plays black
 let enginePlaysColor = null;
 
+// Grandmaster mode: if true, randomly select from top master games instead of weighted by distribution
+let grandmasterMode = false;
+
 // Store last master moves for engine play
 let lastMasterMoves = [];
+let lastTopGames = []; // Store top games for grandmaster mode
+let lastGrandmasterInfo = null; // Store info about the grandmaster who played the last move
 
 // Track if we were previously in book (for out-of-book notification)
 let wasInBook = true;
@@ -73,6 +78,18 @@ function initializeApp() {
     setupEventListeners();
     updateStatus();
     updateSoundButton(); // Initialize sound button state
+    
+    // Set default color selection (white) - only if elements exist
+    try {
+        const whiteBtn = document.getElementById('engineWhiteBtn');
+        if (whiteBtn) {
+            whiteBtn.classList.add('active');
+        }
+        updateEngineModeUI(); // Initialize engine mode UI
+    } catch (error) {
+        console.error('Error initializing engine mode UI:', error);
+        // Don't block initialization if engine controls fail
+    }
 }
 
 // Start initialization when DOM is ready
@@ -89,6 +106,17 @@ if (document.readyState === 'loading') {
 
 function initializeBoard() {
     try {
+        const boardElement = document.getElementById('myBoard');
+        if (!boardElement) {
+            console.error('Board element not found!');
+            return;
+        }
+        
+        if (typeof Chessboard === 'undefined') {
+            console.error('Chessboard library not loaded!');
+            return;
+        }
+        
         const config = {
             draggable: true,
             position: 'start',
@@ -107,6 +135,8 @@ function initializeBoard() {
         if (!board) {
             throw new Error('Failed to initialize chessboard');
         }
+        
+        console.log('Chessboard initialized successfully');
         
         // Resize board after a short delay to ensure container is rendered
         // Use requestAnimationFrame for smoother rendering
@@ -1176,14 +1206,74 @@ function weightedRandomSelect(items, weights) {
 }
 
 function selectEnginePlayMove() {
-    // Priority 1: Use master games if available (weighted by game count)
+    // Priority 1: Use master games if available
     if (lastMasterMoves && lastMasterMoves.length > 0) {
         const moves = lastMasterMoves.map(m => m.move);
-        const weights = lastMasterMoves.map(m => m.total || 1);
         
-        console.log('Selecting from master moves:', moves, weights);
+        let selectedMove;
+        let grandmasterInfo = null;
+        
+        if (grandmasterMode) {
+            // Grandmaster mode: select from moves that are in the top games
+            // This ensures we can always find a grandmaster who played the move
+            let availableMoves = moves;
+            let gamesWithMoves = [];
+            
+            if (lastTopGames && lastTopGames.length > 0) {
+                // Get moves that are actually in the top games
+                const movesInTopGames = [...new Set(lastTopGames.map(g => g.move).filter(Boolean))];
+                if (movesInTopGames.length > 0) {
+                    // Prefer moves that are in top games, but fall back to all moves if needed
+                    availableMoves = movesInTopGames.filter(m => moves.includes(m));
+                    if (availableMoves.length === 0) {
+                        availableMoves = moves; // Fall back to all moves
+                    }
+                }
+            }
+            
+            // Randomly select from available moves
+            const moveIndex = Math.floor(Math.random() * availableMoves.length);
+            selectedMove = availableMoves[moveIndex];
+            
+            // Find a game that played this move
+            if (lastTopGames && lastTopGames.length > 0 && game && enginePlaysColor) {
+                const gamesWithMove = lastTopGames.filter(g => g.move === selectedMove);
+                
+                if (gamesWithMove.length > 0) {
+                    const selectedGame = gamesWithMove[Math.floor(Math.random() * gamesWithMove.length)];
+                    // Determine which player played this move based on engine's color
+                    // If engine is playing white, then white is making the move
+                    const isWhiteMove = enginePlaysColor === 'w';
+                    grandmasterInfo = {
+                        name: isWhiteMove ? selectedGame.white_name : selectedGame.black_name,
+                        rating: isWhiteMove ? selectedGame.white_rating : selectedGame.black_rating,
+                        color: isWhiteMove ? 'white' : 'black',
+                        move: selectedMove
+                    };
+                    console.log('Grandmaster mode: selected', selectedMove, 'played by', grandmasterInfo.name, grandmasterInfo.rating);
+                } else {
+                    console.log('Warning: No games found with move', selectedMove, 'in lastTopGames');
+                }
+            } else {
+                console.log('Cannot find grandmaster info - lastTopGames:', lastTopGames?.length, 'game:', !!game, 'enginePlaysColor:', enginePlaysColor);
+            }
+        } else {
+            // Normal mode: weighted by game count
+            const weights = lastMasterMoves.map(m => m.total || 1);
+            selectedMove = weightedRandomSelect(moves, weights);
+            console.log('Selecting from master moves (weighted):', moves, weights);
+        }
+        
+        // Store grandmaster info for display (only if we found one)
+        lastGrandmasterInfo = grandmasterInfo;
+        
+        // If in grandmaster mode but couldn't find a game, clear the display
+        if (grandmasterMode && !grandmasterInfo) {
+            clearGrandmasterDisplay();
+        }
+        
         wasInBook = true;
-        return { move: weightedRandomSelect(moves, weights), fromBook: true };
+        return { move: selectedMove, fromBook: true };
     }
     
     // Priority 2: Use engine moves (weighted by evaluation - better = higher weight)
@@ -1266,7 +1356,17 @@ async function makeEngineMoveIfNeeded() {
                 
                 updateStatus();
                 const source = selection.fromBook ? '(book)' : '(engine)';
-                document.getElementById('voiceStatus').textContent = `Engine played: ${result.san} ${source}`;
+                let statusText = `Engine played: ${result.san} ${source}`;
+                
+                // Show grandmaster info if in grandmaster mode
+                if (grandmasterMode && lastGrandmasterInfo) {
+                    statusText += ` (${lastGrandmasterInfo.name} ${lastGrandmasterInfo.rating})`;
+                    updateGrandmasterDisplay(lastGrandmasterInfo);
+                } else {
+                    clearGrandmasterDisplay();
+                }
+                
+                document.getElementById('voiceStatus').textContent = statusText;
                 
                 // Speak the move and wait for it to complete
                 await speakMove(result.san);
@@ -1328,15 +1428,119 @@ function setEngineMode(color) {
     }
 }
 
-function updateEngineModeUI() {
-    const analysisSection = document.querySelector('.analysis-section');
-    
+function toggleEngineMode() {
     if (enginePlaysColor) {
-        // Engine mode - blur the analysis panels
-        analysisSection.classList.add('engine-mode');
+        // Switch to analysis mode
+        setEngineMode(null);
     } else {
-        // Analysis mode - show panels normally
-        analysisSection.classList.remove('engine-mode');
+        // Switch to engine mode - use current selection or default to white
+        const whiteBtn = document.getElementById('engineWhiteBtn');
+        const blackBtn = document.getElementById('engineBlackBtn');
+        let color = 'w'; // default
+        if (blackBtn && blackBtn.classList.contains('active')) {
+            color = 'b';
+        } else if (whiteBtn && !whiteBtn.classList.contains('active')) {
+            // Neither is active, set white as default
+            whiteBtn.classList.add('active');
+        }
+        setEngineMode(color);
+    }
+}
+
+function setEngineColor(color) {
+    if (enginePlaysColor !== color) {
+        setEngineMode(color);
+    }
+}
+
+function toggleGrandmasterMode() {
+    grandmasterMode = document.getElementById('grandmasterModeCheckbox').checked;
+    document.getElementById('voiceStatus').textContent = 
+        grandmasterMode ? 'Grandmaster mode enabled' : 'Grandmaster mode disabled';
+    
+    // Update UI to show/hide grandmaster info display
+    updateEngineModeUI();
+    
+    // Clear grandmaster info if disabling
+    if (!grandmasterMode) {
+        clearGrandmasterDisplay();
+        lastGrandmasterInfo = null;
+    }
+}
+
+function updateEngineModeUI() {
+    try {
+        const analysisSection = document.querySelector('.analysis-section');
+        if (!analysisSection) return; // Exit early if element doesn't exist
+        
+        const engineControls = document.getElementById('engineControls');
+        const engineColorGroup = document.getElementById('engineColorGroup');
+        const grandmasterGroup = document.getElementById('grandmasterGroup');
+        const grandmasterInfoGroup = document.getElementById('grandmasterInfoGroup');
+        const engineModeBtn = document.getElementById('engineModeBtn');
+        const engineModeText = document.getElementById('engineModeText');
+        const engineWhiteBtn = document.getElementById('engineWhiteBtn');
+        const engineBlackBtn = document.getElementById('engineBlackBtn');
+        
+        // Only proceed if all required elements exist
+        if (!engineControls || !engineColorGroup || !grandmasterGroup || 
+            !engineModeBtn || !engineModeText || !engineWhiteBtn || !engineBlackBtn) {
+            return; // Exit if any required elements are missing
+        }
+        
+        if (enginePlaysColor) {
+            // Engine mode - blur the analysis panels
+            analysisSection.classList.add('engine-mode');
+            engineColorGroup.style.display = 'flex';
+            grandmasterGroup.style.display = 'flex';
+            if (grandmasterInfoGroup) {
+                grandmasterInfoGroup.style.display = grandmasterMode ? 'flex' : 'none';
+            }
+            engineModeText.textContent = 'Analysis Mode'; // Button shows what you'll switch TO
+            engineModeBtn.classList.add('active');
+            
+            // Update color buttons
+            if (enginePlaysColor === 'w') {
+                engineWhiteBtn.classList.add('active');
+                engineBlackBtn.classList.remove('active');
+            } else {
+                engineBlackBtn.classList.add('active');
+                engineWhiteBtn.classList.remove('active');
+            }
+        } else {
+            // Analysis mode - show panels normally
+            analysisSection.classList.remove('engine-mode');
+            engineColorGroup.style.display = 'none';
+            grandmasterGroup.style.display = 'none';
+            if (grandmasterInfoGroup) {
+                grandmasterInfoGroup.style.display = 'none';
+            }
+            engineModeText.textContent = 'Engine Mode'; // Button shows what you'll switch TO
+            engineModeBtn.classList.remove('active');
+        }
+    } catch (error) {
+        console.error('Error updating engine mode UI:', error);
+        // Don't throw - just log the error
+    }
+}
+
+function updateGrandmasterDisplay(info) {
+    if (!info) return;
+    
+    const grandmasterInfoGroup = document.getElementById('grandmasterInfoGroup');
+    const grandmasterInfo = document.getElementById('grandmasterInfo');
+    
+    if (grandmasterInfoGroup && grandmasterInfo && grandmasterMode && enginePlaysColor) {
+        grandmasterInfoGroup.style.display = 'flex';
+        grandmasterInfo.textContent = `Last move by: ${info.name} (${info.rating})`;
+        grandmasterInfo.title = `${info.name} (${info.rating}) played ${info.move}`;
+    }
+}
+
+function clearGrandmasterDisplay() {
+    const grandmasterInfoGroup = document.getElementById('grandmasterInfoGroup');
+    if (grandmasterInfoGroup) {
+        grandmasterInfoGroup.style.display = 'none';
     }
 }
 
@@ -1488,6 +1692,78 @@ function parseAndMakeMove(voiceText) {
         text.includes('analysis') || text.includes('stop engine') || 
         text.includes('two player') || text.includes('2 player')) {
         setEngineMode(null);
+        return;
+    }
+    
+    // Handle grandmaster plays commands (enables engine mode + grandmaster mode in one command)
+    if (text.includes('grandmaster plays white') || text.includes('gm plays white') || 
+        text.includes('grandmaster white')) {
+        setEngineMode('w');
+        // Wait a moment for UI to update, then enable grandmaster mode
+        setTimeout(() => {
+            const checkbox = document.getElementById('grandmasterModeCheckbox');
+            if (checkbox && !checkbox.checked) {
+                checkbox.checked = true;
+                toggleGrandmasterMode();
+            }
+        }, 100);
+        return;
+    }
+    
+    if (text.includes('grandmaster plays black') || text.includes('gm plays black') || 
+        text.includes('grandmaster black')) {
+        setEngineMode('b');
+        // Wait a moment for UI to update, then enable grandmaster mode
+        setTimeout(() => {
+            const checkbox = document.getElementById('grandmasterModeCheckbox');
+            if (checkbox && !checkbox.checked) {
+                checkbox.checked = true;
+                toggleGrandmasterMode();
+            }
+        }, 100);
+        return;
+    }
+    
+    // Handle grandmaster mode commands (only works in engine mode)
+    if (text.includes('grandmaster mode') || text.includes('grandmaster') || text.includes('gm mode')) {
+        if (enginePlaysColor) {
+            const checkbox = document.getElementById('grandmasterModeCheckbox');
+            if (checkbox) {
+                // Toggle grandmaster mode
+                checkbox.checked = !checkbox.checked;
+                toggleGrandmasterMode();
+            }
+        } else {
+            document.getElementById('voiceStatus').textContent = 'Grandmaster mode only works in engine mode';
+        }
+        return;
+    }
+    
+    if (text.includes('enable grandmaster') || text.includes('turn on grandmaster') || 
+        text.includes('grandmaster on')) {
+        if (enginePlaysColor) {
+            const checkbox = document.getElementById('grandmasterModeCheckbox');
+            if (checkbox && !checkbox.checked) {
+                checkbox.checked = true;
+                toggleGrandmasterMode();
+            }
+        } else {
+            document.getElementById('voiceStatus').textContent = 'Grandmaster mode only works in engine mode';
+        }
+        return;
+    }
+    
+    if (text.includes('disable grandmaster') || text.includes('turn off grandmaster') || 
+        text.includes('grandmaster off')) {
+        if (enginePlaysColor) {
+            const checkbox = document.getElementById('grandmasterModeCheckbox');
+            if (checkbox && checkbox.checked) {
+                checkbox.checked = false;
+                toggleGrandmasterMode();
+            }
+        } else {
+            document.getElementById('voiceStatus').textContent = 'Grandmaster mode only works in engine mode';
+        }
         return;
     }
     
@@ -1979,6 +2255,7 @@ function displayMasterMoves(data) {
     
     // Store for engine play mode
     lastMasterMoves = (data && data.moves) ? data.moves : [];
+    lastTopGames = (data && data.top_games) ? data.top_games : [];
     
     if (data.error) {
         container.innerHTML = `<p class="placeholder">Error: ${data.error}</p>`;
@@ -1987,6 +2264,7 @@ function displayMasterMoves(data) {
     
     if (!data.found || !data.moves || data.moves.length === 0) {
         lastMasterMoves = []; // Clear if no moves found
+        lastTopGames = []; // Clear top games too
         container.innerHTML = '<p class="placeholder">Position not found in Lichess master games database</p>';
         return;
     }
@@ -2121,36 +2399,79 @@ function playMoveFromClick(moveStr) {
 // ===========================
 
 function setupEventListeners() {
-    document.getElementById('voiceBtn').addEventListener('click', toggleVoiceRecognition);
-    document.getElementById('resetBtn').addEventListener('click', resetGame);
-    document.getElementById('undoBtn').addEventListener('click', undoMove);
-    document.getElementById('flipBtn').addEventListener('click', flipBoard);
-    document.getElementById('soundBtn').addEventListener('click', toggleSound);
-    document.getElementById('themeBtn').addEventListener('click', toggleDarkMode);
-    document.getElementById('helpBtn').addEventListener('click', showCommandsModal);
-    
-    // Initialize theme from localStorage
-    initializeTheme();
-    
-    // Modal close handlers
-    const modal = document.getElementById('commandsModal');
-    const closeBtn = modal.querySelector('.modal-close');
-    
-    closeBtn.addEventListener('click', hideCommandsModal);
-    
-    // Close modal when clicking outside
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            hideCommandsModal();
+    try {
+        // Core controls
+        const voiceBtn = document.getElementById('voiceBtn');
+        if (voiceBtn) voiceBtn.addEventListener('click', toggleVoiceRecognition);
+        
+        const resetBtn = document.getElementById('resetBtn');
+        if (resetBtn) resetBtn.addEventListener('click', resetGame);
+        
+        const undoBtn = document.getElementById('undoBtn');
+        if (undoBtn) undoBtn.addEventListener('click', undoMove);
+        
+        const flipBtn = document.getElementById('flipBtn');
+        if (flipBtn) flipBtn.addEventListener('click', flipBoard);
+        
+        const soundBtn = document.getElementById('soundBtn');
+        if (soundBtn) soundBtn.addEventListener('click', toggleSound);
+        
+        const themeBtn = document.getElementById('themeBtn');
+        if (themeBtn) themeBtn.addEventListener('click', toggleDarkMode);
+        
+        const helpBtn = document.getElementById('helpBtn');
+        if (helpBtn) helpBtn.addEventListener('click', showCommandsModal);
+        
+        // Engine mode controls - only if they exist
+        const engineModeBtn = document.getElementById('engineModeBtn');
+        if (engineModeBtn) {
+            engineModeBtn.addEventListener('click', toggleEngineMode);
         }
-    });
-    
-    // Close modal with Escape key
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && modal.classList.contains('show')) {
-            hideCommandsModal();
+        
+        const engineWhiteBtn = document.getElementById('engineWhiteBtn');
+        if (engineWhiteBtn) {
+            engineWhiteBtn.addEventListener('click', () => setEngineColor('w'));
         }
-    });
+        
+        const engineBlackBtn = document.getElementById('engineBlackBtn');
+        if (engineBlackBtn) {
+            engineBlackBtn.addEventListener('click', () => setEngineColor('b'));
+        }
+        
+        const grandmasterCheckbox = document.getElementById('grandmasterModeCheckbox');
+        if (grandmasterCheckbox) {
+            grandmasterCheckbox.addEventListener('change', toggleGrandmasterMode);
+        }
+        
+        // Initialize theme from localStorage
+        initializeTheme();
+        
+        // Modal close handlers
+        const modal = document.getElementById('commandsModal');
+        if (modal) {
+            const closeBtn = modal.querySelector('.modal-close');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', hideCommandsModal);
+            }
+            
+            // Close modal when clicking outside
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    hideCommandsModal();
+                }
+            });
+            
+            // Close modal with Escape key
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && modal.classList.contains('show')) {
+                    hideCommandsModal();
+                }
+            });
+        }
+    } catch (error) {
+        console.error('Error setting up event listeners:', error);
+        // Don't throw - allow initialization to continue
+    }
 }
 
 function showCommandsModal() {
