@@ -236,10 +236,17 @@ function initializeVoiceRecognition() {
         const transcript = event.results[0][0].transcript.trim();
         document.getElementById('voiceTranscript').textContent = `Heard: "${transcript}"`;
         
+        // Stop recognition immediately to prevent appending new speech
+        try {
+            recognition.stop();
+        } catch (e) {
+            console.log('Could not stop recognition after result:', e);
+        }
+        
         // Parse and make move
         setTimeout(() => {
             parseAndMakeMove(transcript);
-        }, 100);
+        }, 50);
     };
     
     recognition.onerror = (event) => {
@@ -291,9 +298,10 @@ function initializeVoiceRecognition() {
         }
         
         if (btn.classList.contains('listening') && !recognitionRestarting) {
-            // Prevent rapid restarts - wait at least 300ms between starts
+            // Restart quickly for short commands - reduced delay for faster response
             const timeSinceStart = Date.now() - lastRecognitionStart;
-            const delay = Math.max(300, 500 - timeSinceStart);
+            // Reduced delay: minimum 100ms, maximum 200ms (was 300-500ms)
+            const delay = Math.max(100, 200 - timeSinceStart);
             
             recognitionRestarting = true;
             
@@ -316,7 +324,7 @@ function initializeVoiceRecognition() {
                                         'Voice recognition stopped. Click to restart.';
                                 }
                             }
-                        }, 1000);
+                        }, 500);
                     }
                 }
                 recognitionRestarting = false;
@@ -741,7 +749,23 @@ const VOICE_CORRECTIONS = {
     'h 8': 'h8',
     'age four': 'h4',
     'age 4': 'h4',
+    'age for': 'h4',
+    'age one': 'h1',
+    'age 1': 'h1',
+    'age two': 'h2',
+    'age 2': 'h2',
+    'age three': 'h3',
+    'age 3': 'h3',
+    'age five': 'h5',
+    'age 5': 'h5',
+    'age six': 'h6',
+    'age 6': 'h6',
+    'age seven': 'h7',
+    'age 7': 'h7',
+    'age eight': 'h8',
+    'age 8': 'h8',
     'ache four': 'h4',
+    'ache 4': 'h4',
     // Numbers
     'six': '6',
     'five': '5',
@@ -991,6 +1015,17 @@ function correctVoiceInput(text) {
     corrected = corrected.replace(/\bgee[- ]?(seven)\b/gi, 'g7');
     corrected = corrected.replace(/\bgee[- ]?(eight)\b/gi, 'g8');
     
+    // Handle "age" as "h" column (very common misrecognition)
+    corrected = corrected.replace(/\bage[- ]?([1-8])\b/gi, 'h$1');
+    corrected = corrected.replace(/\bage[- ]?(one)\b/gi, 'h1');
+    corrected = corrected.replace(/\bage[- ]?(two)\b/gi, 'h2');
+    corrected = corrected.replace(/\bage[- ]?(three)\b/gi, 'h3');
+    corrected = corrected.replace(/\bage[- ]?(four|for)\b/gi, 'h4');
+    corrected = corrected.replace(/\bage[- ]?(five)\b/gi, 'h5');
+    corrected = corrected.replace(/\bage[- ]?(six)\b/gi, 'h6');
+    corrected = corrected.replace(/\bage[- ]?(seven)\b/gi, 'h7');
+    corrected = corrected.replace(/\bage[- ]?(eight)\b/gi, 'h8');
+    
     // Handle piece name misrecognitions with regex
     // Knight variations
     corrected = corrected.replace(/\b(night|nite|knit|neat|knife)\b/gi, 'knight');
@@ -1001,6 +1036,17 @@ function correctVoiceInput(text) {
     // Queen variations
     corrected = corrected.replace(/\b(quean|ween)\b/gi, 'queen');
     // Note: "green", "cream", "clean" are too common as regular words, kept only in dictionary
+    
+    // Handle "age" after piece names (e.g., "knight age 4" -> "knight h4")
+    corrected = corrected.replace(/\b(knight|bishop|rook|queen|king)\s+age[- ]?([1-8])\b/gi, '$1 h$2');
+    corrected = corrected.replace(/\b(knight|bishop|rook|queen|king)\s+age[- ]?(one)\b/gi, '$1 h1');
+    corrected = corrected.replace(/\b(knight|bishop|rook|queen|king)\s+age[- ]?(two)\b/gi, '$1 h2');
+    corrected = corrected.replace(/\b(knight|bishop|rook|queen|king)\s+age[- ]?(three)\b/gi, '$1 h3');
+    corrected = corrected.replace(/\b(knight|bishop|rook|queen|king)\s+age[- ]?(four|for)\b/gi, '$1 h4');
+    corrected = corrected.replace(/\b(knight|bishop|rook|queen|king)\s+age[- ]?(five)\b/gi, '$1 h5');
+    corrected = corrected.replace(/\b(knight|bishop|rook|queen|king)\s+age[- ]?(six)\b/gi, '$1 h6');
+    corrected = corrected.replace(/\b(knight|bishop|rook|queen|king)\s+age[- ]?(seven)\b/gi, '$1 h7');
+    corrected = corrected.replace(/\b(knight|bishop|rook|queen|king)\s+age[- ]?(eight)\b/gi, '$1 h8');
     
     // Handle piece + column patterns (e.g., "brook to e4" -> "rook to e4")
     corrected = corrected.replace(/\b(night|nite)[- ]?([a-h])/gi, 'knight $2');
@@ -1534,15 +1580,18 @@ function parseAndMakeMove(voiceText) {
         }
     }
     
-    // Handle "pawn takes [square]" - but ONLY if no other piece is mentioned
+    // Handle "pawn takes [square]" - but ONLY if capture is mentioned
     const pieceNames = ['knight', 'bishop', 'rook', 'queen', 'king'];
     const hasPieceName = pieceNames.some(piece => text.includes(piece));
     
-    // Only try pawn capture if:
-    // 1. "pawn" is explicitly mentioned, OR
-    // 2. No other piece name is mentioned AND there's a capture pattern
-    const isPawnCapture = text.includes('pawn') || 
-        (!hasPieceName && /\b(?:takes|x|captures?)\s*([a-h][1-8])\b/i.test(cleaned));
+    // Check if there's a capture pattern (takes/x/captures)
+    const hasCapturePattern = /\b(?:takes|x|captures?)\b/i.test(cleaned);
+    
+    // Only try pawn capture if there's a capture pattern:
+    // 1. "pawn" is mentioned AND there's a capture pattern, OR
+    // 2. No piece name is mentioned AND there's a capture pattern (assume pawn)
+    const isPawnCapture = hasCapturePattern && 
+        (text.includes('pawn') || !hasPieceName);
     
     if (isPawnCapture && !hasPieceName) {
         // Extract target square
@@ -1584,6 +1633,34 @@ function parseAndMakeMove(voiceText) {
         }
     }
     
+    // Handle "pawn to [square]" - normal pawn moves (not captures)
+    if (text.includes('pawn') && !hasCapturePattern) {
+        // Extract the target square
+        const squareMatch = cleaned.match(/([a-h][1-8])/i);
+        if (squareMatch) {
+            const targetSquare = squareMatch[1].toLowerCase();
+            // Try to make the pawn move directly
+            try {
+                const result = game.move(targetSquare);
+                if (result) {
+                    playMoveSound({ isCapture: result.captured !== undefined });
+                    if (board) {
+                        requestAnimationFrame(() => {
+                            board.position(game.fen());
+                        });
+                    }
+                    updateStatus();
+                    analyzePosition();
+                    document.getElementById('voiceStatus').textContent = `Move made: ${result.san}`;
+                    return;
+                }
+            } catch (error) {
+                // If direct move fails, continue to standard parsing
+                console.log('Direct pawn move failed, trying standard parsing');
+            }
+        }
+    }
+    
     // Handle special cases
     if (text.includes('castle') || text.includes('castles')) {
         if (text.includes('king') || text.includes('short')) {
@@ -1620,6 +1697,9 @@ function parseAndMakeMove(voiceText) {
         // Remove "takes" or "captures" and replace with "x"
         let notation = cleaned.replace(/\b(takes|captures|capture)\b/gi, 'x');
         
+        // Remove "pawn" - pawns don't need a prefix in notation
+        notation = notation.replace(/\bpawn\b/gi, '');
+        
         // Handle piece names
         notation = notation.replace(/\bknight\b/gi, 'N');
         notation = notation.replace(/\bbishop\b/gi, 'B');
@@ -1628,7 +1708,7 @@ function parseAndMakeMove(voiceText) {
         notation = notation.replace(/\bking\b/gi, 'K');
         
         // Remove spaces
-        notation = notation.replace(/\s+/g, '');
+        notation = notation.replace(/\s+/g, '').trim();
         
         // Try common patterns
         const patterns = [
