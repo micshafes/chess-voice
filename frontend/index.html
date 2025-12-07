@@ -3,18 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <title>Chess Voice - Voice-Controlled Chess Analysis</title>
+    <title>Sound Chess - Your Audio Mate</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>♟️</text></svg>">
     <link rel="stylesheet"
           href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css"
           integrity="sha384-q94+BZtLrkL1/ohfjR8c6L+A6qzNH9R2hBLwyoAfu3i/WCvQjzL2RQJ3uNHDISdU"
           crossorigin="anonymous">
     <link rel="stylesheet" href="css/styles.css">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
     <div id="container">
-        <h1>Chess Voice</h1>
-        <p class="subtitle">Voice-controlled chess analysis with Stockfish and master games database</p>
+        <h1>Sound Chess</h1>
+        <p class="subtitle">Your Audio Mate — Voice-controlled chess analysis with Stockfish and master games</p>
         
         <!-- Voice Control Section -->
         <div class="voice-control">
@@ -32,11 +34,26 @@
 
         <!-- Controls -->
         <div class="controls">
-            <button id="resetBtn" class="control-btn">🔄 Reset</button>
-            <button id="undoBtn" class="control-btn">↩️ Undo</button>
-            <button id="flipBtn" class="control-btn">↕️ Flip</button>
-            <button id="soundBtn" class="control-btn sound-btn" title="Sound on (click to toggle)">🔊 Sound</button>
-            <button id="helpBtn" class="control-btn help-btn" title="Show voice commands">❓ Help</button>
+            <button id="resetBtn" class="control-btn" title="Reset board">
+                <i data-lucide="rotate-ccw"></i>
+            </button>
+            <button id="undoBtn" class="control-btn" title="Undo move">
+                <i data-lucide="undo-2"></i>
+            </button>
+            <button id="flipBtn" class="control-btn" title="Flip board">
+                <i data-lucide="arrow-up-down"></i>
+            </button>
+            <button id="soundBtn" class="control-btn sound-btn" title="Toggle sound">
+                <i data-lucide="volume-2" class="sound-on-icon"></i>
+                <i data-lucide="volume-x" class="sound-off-icon"></i>
+            </button>
+            <button id="themeBtn" class="control-btn theme-btn" title="Toggle dark mode">
+                <i data-lucide="sun" class="light-icon"></i>
+                <i data-lucide="moon" class="dark-icon"></i>
+            </button>
+            <button id="helpBtn" class="control-btn help-btn" title="Voice commands">
+                <i data-lucide="help-circle"></i>
+            </button>
         </div>
 
     <!-- Commands Help Modal -->
@@ -85,6 +102,8 @@
                     <ul>
                         <li><strong>"pause"</strong> - Stop listening for moves</li>
                         <li><strong>"resume"</strong> - Start listening again</li>
+                        <li><strong>"dark mode"</strong> - Switch to dark theme</li>
+                        <li><strong>"light mode"</strong> - Switch to light theme</li>
                         <li><strong>"show commands"</strong> - Show this help</li>
                     </ul>
                 </div>
@@ -128,6 +147,12 @@
             crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.js"></script>
     <script src="js/app.js" defer></script>
+    <script>
+        // Initialize Lucide icons after DOM loads
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+        });
+    </script>
 </body>
 </html>
 

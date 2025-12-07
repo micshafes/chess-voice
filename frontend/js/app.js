@@ -503,13 +503,11 @@ function updateSoundButton() {
     if (!btn) return;
     
     if (soundEnabled) {
-        btn.textContent = '🔊 Sound';
         btn.classList.remove('muted');
-        btn.title = 'Sound on (click to toggle)';
+        btn.title = 'Sound on (click to mute)';
     } else {
-        btn.textContent = '🔇 Sound';
         btn.classList.add('muted');
-        btn.title = 'Sound off (click to toggle)';
+        btn.title = 'Sound off (click to unmute)';
     }
 }
 
@@ -638,12 +636,14 @@ const VOICE_CORRECTIONS = {
     'b four': 'b4',
     'b-4': 'b4',
     'b 4': 'b4',
+    'before': 'b4',
     // Common misrecognitions for "e" column
     'e-cigs': 'e6',
     'e cigs': 'e6',
     'e-cig': 'e6',
     'e cig': 'e6',
     'e cigs': 'e6',
+    'essex': 'e6',
     'e six': 'e6',
     'e-6': 'e6',
     'e 6': 'e6',
@@ -686,7 +686,23 @@ const VOICE_CORRECTIONS = {
     'd 7': 'd7',
     'd eight': 'd8',
     'd 8': 'd8',
-    // Common misrecognitions for "f" column
+    // Common misrecognitions for "f" column - "f" often heard as "off"
+    'off 1': 'f1',
+    'off 2': 'f2',
+    'off 3': 'f3',
+    'off 4': 'f4',
+    'off 5': 'f5',
+    'off 6': 'f6',
+    'off 7': 'f7',
+    'off 8': 'f8',
+    'off one': 'f1',
+    'off two': 'f2',
+    'off three': 'f3',
+    'off four': 'f4',
+    'off five': 'f5',
+    'off six': 'f6',
+    'off seven': 'f7',
+    'off eight': 'f8',
     'f for': 'f4',
     'f-four': 'f4',
     'f four': 'f4',
@@ -759,6 +775,14 @@ const VOICE_CORRECTIONS = {
     'night a': 'na',
     'night g': 'ng',
     'night h': 'nh',
+    // "Knight e" sounds like numbers
+    '90': 'ne',
+    'ninety': 'ne',
+    '90s': 'ne',
+    '9e': 'ne',
+    '9x': 'nex',
+    '90 x': 'nex',
+    'ninety x': 'nex',
     // Common piece misrecognitions - Rook
     'brook': 'rook',
     'brooke': 'rook',
@@ -944,6 +968,17 @@ function correctVoiceInput(text) {
     corrected = corrected.replace(/\bg[- ]?for\b/gi, 'g4');
     corrected = corrected.replace(/\ba[- ]?for\b/gi, 'a4');
     corrected = corrected.replace(/\bb[- ]?for\b/gi, 'b4');
+    
+    // Handle "off" as "f" column (very common misrecognition)
+    corrected = corrected.replace(/\boff[- ]?([1-8])\b/gi, 'f$1');
+    corrected = corrected.replace(/\boff[- ]?(one)\b/gi, 'f1');
+    corrected = corrected.replace(/\boff[- ]?(two)\b/gi, 'f2');
+    corrected = corrected.replace(/\boff[- ]?(three)\b/gi, 'f3');
+    corrected = corrected.replace(/\boff[- ]?(four|for)\b/gi, 'f4');
+    corrected = corrected.replace(/\boff[- ]?(five)\b/gi, 'f5');
+    corrected = corrected.replace(/\boff[- ]?(six)\b/gi, 'f6');
+    corrected = corrected.replace(/\boff[- ]?(seven)\b/gi, 'f7');
+    corrected = corrected.replace(/\boff[- ]?(eight)\b/gi, 'f8');
     
     // Handle "gee" as "g" column
     corrected = corrected.replace(/\bgee[- ]?([1-8])\b/gi, 'g$1');
@@ -1404,7 +1439,8 @@ function parseAndMakeMove(voiceText) {
     }
     
     if (text.includes('analysis mode') || text.includes('analyze mode') || 
-        text.includes('stop engine') || text.includes('two player') || text.includes('2 player')) {
+        text.includes('analysis') || text.includes('stop engine') || 
+        text.includes('two player') || text.includes('2 player')) {
         setEngineMode(null);
         return;
     }
@@ -1415,6 +1451,23 @@ function parseAndMakeMove(voiceText) {
         text.includes('commands') || text.includes('voice commands')) {
         showCommandsModal();
         document.getElementById('voiceStatus').textContent = 'Showing voice commands';
+        return;
+    }
+    
+    // Handle dark mode / light mode toggle
+    if (text.includes('dark mode') || text.includes('dark theme')) {
+        if (!document.body.classList.contains('dark-mode')) {
+            toggleDarkMode();
+        }
+        document.getElementById('voiceStatus').textContent = 'Dark mode enabled';
+        return;
+    }
+    
+    if (text.includes('light mode') || text.includes('light theme')) {
+        if (document.body.classList.contains('dark-mode')) {
+            toggleDarkMode();
+        }
+        document.getElementById('voiceStatus').textContent = 'Light mode enabled';
         return;
     }
     
@@ -1534,9 +1587,27 @@ function parseAndMakeMove(voiceText) {
     // Handle special cases
     if (text.includes('castle') || text.includes('castles')) {
         if (text.includes('king') || text.includes('short')) {
-            move = game.turn() === 'w' ? 'O-O' : 'O-O';
+            move = 'O-O';
         } else if (text.includes('queen') || text.includes('long')) {
-            move = game.turn() === 'w' ? 'O-O-O' : 'O-O-O';
+            move = 'O-O-O';
+        } else {
+            // Just "castle" - check what's legal
+            const legalMoves = game.moves();
+            const canCastleKingside = legalMoves.includes('O-O');
+            const canCastleQueenside = legalMoves.includes('O-O-O');
+            
+            if (canCastleKingside && canCastleQueenside) {
+                document.getElementById('voiceStatus').textContent = 
+                    'Both castling options available. Say "castle kingside" or "castle queenside"';
+                return;
+            } else if (canCastleKingside) {
+                move = 'O-O';
+            } else if (canCastleQueenside) {
+                move = 'O-O-O';
+            } else {
+                document.getElementById('voiceStatus').textContent = 'Castling is not legal in this position';
+                return;
+            }
         }
     } else if (text.includes('resign')) {
         alert('Game resigned');
@@ -1644,6 +1715,7 @@ function tryAlternativeParsing(text) {
 // Track current analysis to cancel when position changes
 let currentAnalysisFen = null;
 let currentAnalysisDepth = 0;
+let currentAnalysisController = null; // AbortController for cancelling fetch requests
 
 async function analyzePosition() {
     if (!game) {
@@ -1656,7 +1728,16 @@ async function analyzePosition() {
     // Update FEN display
     document.getElementById('fen').textContent = fen;
     
-    // Cancel any ongoing analysis for a different position
+    // Cancel any ongoing analysis
+    if (currentAnalysisController) {
+        currentAnalysisController.abort();
+        console.log('Cancelled previous analysis');
+    }
+    
+    // Create new abort controller for this analysis
+    currentAnalysisController = new AbortController();
+    const signal = currentAnalysisController.signal;
+    
     currentAnalysisFen = fen;
     currentAnalysisDepth = 0;
     
@@ -1666,12 +1747,16 @@ async function analyzePosition() {
     
     // Fetch master moves first (quick)
     try {
-        const masterResponse = await fetch(`${API_BASE_URL}/master-moves/?fen=${encodeURIComponent(fen)}`);
+        const masterResponse = await fetch(`${API_BASE_URL}/master-moves/?fen=${encodeURIComponent(fen)}`, { signal });
         if (masterResponse.ok) {
             const masterData = await masterResponse.json();
             displayMasterMoves(masterData);
         }
     } catch (error) {
+        if (error.name === 'AbortError') {
+            console.log('Master moves fetch aborted');
+            return;
+        }
         console.error('Error fetching master moves:', error);
         document.getElementById('masterMoves').innerHTML = 
             `<p class="placeholder">Error loading master games</p>`;
@@ -1680,7 +1765,7 @@ async function analyzePosition() {
     // In engine play mode, just do depth 15 and play
     if (enginePlaysColor) {
         try {
-            const engineResponse = await fetch(`${API_BASE_URL}/top-moves/?fen=${encodeURIComponent(fen)}&depth=15&num_moves=5`);
+            const engineResponse = await fetch(`${API_BASE_URL}/top-moves/?fen=${encodeURIComponent(fen)}&depth=15&num_moves=5`, { signal });
             if (engineResponse.ok) {
                 const engineData = await engineResponse.json();
                 displayEngineMoves(engineData.moves || [], 15);
@@ -1691,6 +1776,10 @@ async function analyzePosition() {
                 }
             }
         } catch (error) {
+            if (error.name === 'AbortError') {
+                console.log('Engine analysis fetch aborted');
+                return;
+            }
             console.error('Error fetching engine analysis:', error);
             document.getElementById('engineMoves').innerHTML = 
                 `<p class="placeholder">Error loading analysis: ${error.message}</p>`;
@@ -1699,48 +1788,52 @@ async function analyzePosition() {
     }
     
     // Analysis mode: continuous deepening
-    await continuousDeepening(fen);
+    await continuousDeepening(fen, signal);
 }
 
-async function continuousDeepening(fen) {
-    // Depths to iterate through: start fast, then go deeper
-    const depths = [10, 15, 18, 22, 26, 30];
+async function continuousDeepening(fen, signal) {
+    // Depths to iterate through - keep it practical
+    // Depth 20 is already very strong, beyond that takes too long
+    const depths = [12, 16, 20];
     
     for (const depth of depths) {
-        // Check if position changed (user made a move)
-        if (currentAnalysisFen !== fen) {
-            console.log(`Analysis cancelled - position changed (was at depth ${depth})`);
+        // Check if aborted
+        if (signal.aborted) {
+            console.log(`Analysis aborted at depth ${depth}`);
             return;
         }
         
         try {
             console.log(`Analyzing at depth ${depth}...`);
-            const engineResponse = await fetch(`${API_BASE_URL}/top-moves/?fen=${encodeURIComponent(fen)}&depth=${depth}&num_moves=5`);
-            
-            // Check again after fetch completes
-            if (currentAnalysisFen !== fen) {
-                console.log(`Analysis cancelled after fetch - position changed`);
-                return;
-            }
+            const engineResponse = await fetch(
+                `${API_BASE_URL}/top-moves/?fen=${encodeURIComponent(fen)}&depth=${depth}&num_moves=5`,
+                { signal }
+            );
             
             if (engineResponse.ok) {
                 const engineData = await engineResponse.json();
                 currentAnalysisDepth = depth;
-                displayEngineMoves(engineData.moves || [], depth);
+                displayEngineMoves(engineData.moves || [], depth, depth === depths[depths.length - 1]);
             }
         } catch (error) {
+            if (error.name === 'AbortError') {
+                console.log(`Analysis aborted during depth ${depth} fetch`);
+                return;
+            }
             console.error(`Error at depth ${depth}:`, error);
             // Continue to next depth on error
         }
         
         // Small delay between depths to not overwhelm the server
-        await new Promise(resolve => setTimeout(resolve, 100));
+        if (!signal.aborted) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
     }
     
     console.log('Continuous deepening complete');
 }
 
-function displayEngineMoves(moves, depth = null) {
+function displayEngineMoves(moves, depth = null, isComplete = false) {
     const container = document.getElementById('engineMoves');
     
     // Store for "takes" voice command
@@ -1751,8 +1844,7 @@ function displayEngineMoves(moves, depth = null) {
     if (header && header.textContent.includes('Engine')) {
         if (depth && !enginePlaysColor) {
             // Show depth with indicator if still analyzing
-            const maxDepth = 30;
-            const isAnalyzing = depth < maxDepth;
+            const isAnalyzing = !isComplete;
             header.innerHTML = `Top Engine Moves <span class="depth-indicator ${isAnalyzing ? 'analyzing' : ''}">(d${depth}${isAnalyzing ? '...' : ''})</span>`;
         } else {
             header.textContent = 'Top Engine Moves';
@@ -1766,20 +1858,31 @@ function displayEngineMoves(moves, depth = null) {
     
     container.innerHTML = moves.map((move, index) => {
         const evalText = move.type === 'mate' 
-            ? `Mate in ${Math.abs(move.evaluation)}`
+            ? `M${move.evaluation > 0 ? '+' : ''}${move.evaluation}`
             : move.evaluation > 0 
                 ? `+${move.evaluation.toFixed(2)}`
                 : move.evaluation.toFixed(2);
         
-        const evalClass = move.type === 'mate' ? 'mate' : '';
+        const evalClass = move.type === 'mate' ? 'mate' : (move.evaluation > 0.5 ? 'winning' : move.evaluation < -0.5 ? 'losing' : '');
         
         return `
-            <div class="move-item">
-                <span class="move-name">${index + 1}. ${move.move}</span>
+            <div class="move-item clickable-move" data-move="${move.move}" title="Click to play ${move.move}">
+                <span class="move-name">${move.move}</span>
                 <span class="move-eval ${evalClass}">${evalText}</span>
             </div>
         `;
     }).join('');
+    
+    // Add click handlers for moves
+    container.querySelectorAll('.clickable-move').forEach(el => {
+        el.addEventListener('click', (e) => {
+            e.preventDefault();
+            const move = el.dataset.move;
+            if (move) {
+                playMoveFromClick(move);
+            }
+        });
+    });
 }
 
 function displayMasterMoves(data) {
@@ -1800,17 +1903,19 @@ function displayMasterMoves(data) {
     }
     
     const moves = data.moves || [];
+    const topGames = data.top_games || [];
     const totalGames = data.total_games || 0;
     
     let html = '';
     
     if (totalGames > 0) {
-        html += `<p style="margin-bottom: 10px; color: #666; font-size: 0.9em;">
+        html += `<p class="master-stats">
             <strong>${totalGames.toLocaleString()}</strong> master games from this position
         </p>`;
     }
     
-    html += '<h3 style="color: #667eea; margin-top: 10px; margin-bottom: 10px;">Top Master Moves:</h3>';
+    // Top moves section
+    html += '<h3 class="section-title">Popular Moves</h3>';
     
     moves.forEach((moveData, index) => {
         const move = moveData.move;
@@ -1826,24 +1931,99 @@ function displayMasterMoves(data) {
         const blackPct = total > 0 ? ((black / total) * 100).toFixed(1) : 0;
         
         html += `
-            <div class="move-item master-move">
-                <div style="flex: 1;">
-                    <span class="move-name">${index + 1}. ${move}</span>
-                    <div style="font-size: 0.85em; color: #666; margin-top: 4px;">
-                        <span style="color: #27ae60;">W: ${whitePct}%</span> | 
-                        <span style="color: #f39c12;">D: ${drawPct}%</span> | 
-                        <span style="color: #e74c3c;">B: ${blackPct}%</span>
-                        ${avgRating > 0 ? ` | Avg: ${Math.round(avgRating)}` : ''}
+            <div class="move-item clickable-move" data-move="${move}" title="Click to play ${move}">
+                <div class="move-left">
+                    <span class="move-name">${move}</span>
+                    <div class="move-stats">
+                        <span class="win-stat">+${whitePct}%</span>
+                        <span class="draw-stat">=${drawPct}%</span>
+                        <span class="loss-stat">-${blackPct}%</span>
                     </div>
                 </div>
-                <span class="move-eval" style="font-size: 0.9em; color: #666;">
-                    ${total.toLocaleString()} games
-                </span>
+                <div class="move-right">
+                    <span class="move-count">${total.toLocaleString()}</span>
+                    ${avgRating > 0 ? `<span class="rating-stat">${Math.round(avgRating)}</span>` : ''}
+                </div>
             </div>
         `;
     });
     
+    // Top games section
+    if (topGames.length > 0) {
+        html += '<h3 class="section-title" style="margin-top: 12px;">Notable Games</h3>';
+        
+        topGames.forEach(game => {
+            const result = game.winner === 'white' ? '1-0' : game.winner === 'black' ? '0-1' : '½-½';
+            const resultClass = game.winner === 'white' ? 'white-win' : game.winner === 'black' ? 'black-win' : 'draw';
+            const gameUrl = `https://lichess.org/${game.id}`;
+            const moveHtml = game.move ? `<span class="game-move clickable-move" data-move="${game.move}" title="Click to play ${game.move}">${game.move}</span>` : '';
+            
+            html += `
+                <div class="game-item">
+                    <div class="game-players">
+                        <span class="player white-player">
+                            <span class="name">${game.white_name}</span>
+                            <span class="rating">${game.white_rating}</span>
+                        </span>
+                        <span class="game-result ${resultClass}">${result}</span>
+                        <span class="player black-player">
+                            <span class="name">${game.black_name}</span>
+                            <span class="rating">${game.black_rating}</span>
+                        </span>
+                    </div>
+                    <div class="game-info">
+                        ${moveHtml}
+                        <span class="game-year">${game.year}</span>
+                        <a href="${gameUrl}" target="_blank" class="game-link" title="View on Lichess">↗</a>
+                    </div>
+                </div>
+            `;
+        });
+    }
+    
     container.innerHTML = html;
+    
+    // Add click handlers for moves
+    container.querySelectorAll('.clickable-move').forEach(el => {
+        el.addEventListener('click', (e) => {
+            e.preventDefault();
+            const move = el.dataset.move;
+            if (move) {
+                playMoveFromClick(move);
+            }
+        });
+    });
+}
+
+// Play a move when clicking on it in the analysis panels
+function playMoveFromClick(moveStr) {
+    if (!game || !board) return;
+    
+    // Don't allow clicking moves in engine play mode (cheating!)
+    if (enginePlaysColor) {
+        document.getElementById('voiceStatus').textContent = 'Cannot click moves in engine mode';
+        return;
+    }
+    
+    try {
+        const result = game.move(moveStr);
+        if (result) {
+            playMoveSound({ isCapture: result.captured !== undefined });
+            
+            requestAnimationFrame(() => {
+                board.position(game.fen());
+            });
+            
+            updateStatus();
+            analyzePosition();
+            document.getElementById('voiceStatus').textContent = `Played: ${result.san}`;
+        } else {
+            document.getElementById('voiceStatus').textContent = `Invalid move: ${moveStr}`;
+        }
+    } catch (error) {
+        console.error('Error playing clicked move:', error);
+        document.getElementById('voiceStatus').textContent = `Could not play: ${moveStr}`;
+    }
 }
 
 
@@ -1857,7 +2037,11 @@ function setupEventListeners() {
     document.getElementById('undoBtn').addEventListener('click', undoMove);
     document.getElementById('flipBtn').addEventListener('click', flipBoard);
     document.getElementById('soundBtn').addEventListener('click', toggleSound);
+    document.getElementById('themeBtn').addEventListener('click', toggleDarkMode);
     document.getElementById('helpBtn').addEventListener('click', showCommandsModal);
+    
+    // Initialize theme from localStorage
+    initializeTheme();
     
     // Modal close handlers
     const modal = document.getElementById('commandsModal');
@@ -1890,6 +2074,39 @@ function hideCommandsModal() {
     const modal = document.getElementById('commandsModal');
     modal.classList.remove('show');
     document.body.style.overflow = ''; // Restore scrolling
+}
+
+// ===========================
+// Dark Mode
+// ===========================
+
+function initializeTheme() {
+    // Check localStorage first, then system preference
+    const savedTheme = localStorage.getItem('chess-voice-theme');
+    
+    if (savedTheme === 'dark') {
+        document.body.classList.add('dark-mode');
+    } else if (savedTheme === 'light') {
+        document.body.classList.remove('dark-mode');
+    } else {
+        // No saved preference - check system preference
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.body.classList.add('dark-mode');
+        }
+    }
+}
+
+function toggleDarkMode() {
+    document.body.classList.toggle('dark-mode');
+    
+    // Save preference to localStorage
+    const isDark = document.body.classList.contains('dark-mode');
+    localStorage.setItem('chess-voice-theme', isDark ? 'dark' : 'light');
+    
+    // Re-initialize Lucide icons (they may need to update)
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
 }
 
 function resetGame() {

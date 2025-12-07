@@ -39,12 +39,12 @@ for path in STOCKFISH_PATHS:
                     continue
             
             # Try to initialize Stockfish
-            stockfish = Stockfish(path=path_str, parameters={"Threads": 2, "Ponder": "true"})
+            stockfish = Stockfish(path=path_str, parameters={"Threads": 4, "Ponder": "true"})
             stockfish_path = path_str
             break
         else:
             # Try as-is for "stockfish" in PATH
-            stockfish = Stockfish(path=path, parameters={"Threads": 2, "Ponder": "true"})
+            stockfish = Stockfish(path=path, parameters={"Threads": 4, "Ponder": "true"})
             stockfish_path = path
             break
     except Exception as e:

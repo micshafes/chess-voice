@@ -73,8 +73,35 @@ def get_master_moves(fen: str):
             if total_games == 0 and moves:
                 total_games = sum(m['total'] for m in moves)
             
+            # Extract top games with the move they played
+            top_games = []
+            for game_data in data.get('topGames', [])[:5]:  # Top 5 games
+                # Find which move was played in this game by checking the uci field
+                game_uci = game_data.get('uci', '')
+                game_move = None
+                for move_data in data.get('moves', []):
+                    if move_data.get('uci', '') == game_uci:
+                        game_move = move_data.get('san', '')
+                        break
+                
+                white_player = game_data.get('white', {})
+                black_player = game_data.get('black', {})
+                
+                top_games.append({
+                    'id': game_data.get('id', ''),
+                    'white_name': white_player.get('name', 'Unknown'),
+                    'white_rating': white_player.get('rating', 0),
+                    'black_name': black_player.get('name', 'Unknown'),
+                    'black_rating': black_player.get('rating', 0),
+                    'winner': game_data.get('winner'),  # 'white', 'black', or None for draw
+                    'year': game_data.get('year', 0),
+                    'month': game_data.get('month', 0),
+                    'move': game_move
+                })
+            
             return {
                 'moves': moves,
+                'top_games': top_games,
                 'total_games': total_games,
                 'found': len(moves) > 0
             }
