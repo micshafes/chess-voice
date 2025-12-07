@@ -1500,6 +1500,15 @@ function parseAndMakeMove(voiceText) {
         return;
     }
     
+    // Handle hide commands/help
+    if (text.includes('hide commands') || text.includes('hide command') || 
+        text.includes('hide help') || text.includes('close commands') || 
+        text.includes('close command') || text.includes('close help')) {
+        hideCommandsModal();
+        document.getElementById('voiceStatus').textContent = 'Commands hidden';
+        return;
+    }
+    
     // Handle dark mode / light mode toggle
     if (text.includes('dark mode') || text.includes('dark theme')) {
         if (!document.body.classList.contains('dark-mode')) {
