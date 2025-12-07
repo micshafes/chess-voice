@@ -468,7 +468,6 @@ function initializeSounds() {
         // Use Lichess open-source sound files
         moveSound = new Audio('https://lichess1.org/assets/sound/standard/Move.mp3');
         captureSound = new Audio('https://lichess1.org/assets/sound/standard/Capture.mp3');
-        // Use a distinct sound for "out of book" notification
         outOfBookSound = new Audio('https://lichess1.org/assets/sound/standard/GenericNotify.mp3');
 
         [moveSound, captureSound, outOfBookSound].forEach(audio => {
@@ -515,14 +514,14 @@ function playMoveSound({ isCapture = false } = {}) {
             sound = captureSound;
         }
         
-        // Reset and play
-        sound.currentTime = 0;
-        sound.play().catch(e => {
-            console.log('Could not play sound:', e);
-            // Browsers may block autoplay - that's ok
-        });
+        if (sound) {
+            sound.currentTime = 0;
+            sound.play().catch(e => {
+                // Browser autoplay policy may block - that's ok
+            });
+        }
     } catch (error) {
-        console.log('Error playing sound:', error);
+        // Silently handle errors
     }
 }
 
@@ -1109,8 +1108,9 @@ let isSpeaking = false;
 function speakMove(moveText) {
     return new Promise((resolve) => {
         if ('speechSynthesis' in window) {
-            // Cancel any ongoing speech
+            // Cancel any ongoing speech and ensure not paused (Chrome bug workaround)
             window.speechSynthesis.cancel();
+            window.speechSynthesis.resume();
             
             // Pause voice recognition while speaking
             const wasListening = isListening;
@@ -1330,6 +1330,8 @@ async function makeEngineMoveIfNeeded() {
             
             // Speak "out of book" notification
             if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                window.speechSynthesis.resume();
                 const utterance = new SpeechSynthesisUtterance('Out of book');
                 utterance.rate = 1;
                 utterance.volume = 0.7;
@@ -1367,6 +1369,9 @@ async function makeEngineMoveIfNeeded() {
                 }
                 
                 document.getElementById('voiceStatus').textContent = statusText;
+                
+                // Wait for move sound to finish before speaking
+                await new Promise(resolve => setTimeout(resolve, 400));
                 
                 // Speak the move and wait for it to complete
                 await speakMove(result.san);
@@ -1465,6 +1470,12 @@ function toggleGrandmasterMode() {
     if (!grandmasterMode) {
         clearGrandmasterDisplay();
         lastGrandmasterInfo = null;
+    }
+    
+    // Workaround for Chrome speech synthesis bug - resume if paused
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.resume();
     }
 }
 
