@@ -74,11 +74,16 @@ h1 {
 
 .voice-btn.paused {
     background: #f39c12;
-    animation: none;
+    animation: pausePulse 2s infinite;
 }
 
 .voice-btn.paused:hover {
     background: #e67e22;
+}
+
+@keyframes pausePulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
 }
 
 @keyframes pulse {
@@ -188,6 +193,162 @@ h1 {
     background: #7f8c8d;
 }
 
+.control-btn.help-btn {
+    background: #3498db;
+}
+
+.control-btn.help-btn:hover {
+    background: #2980b9;
+}
+
+/* Commands Modal */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    overflow-y: auto;
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal.show {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 20px;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    max-width: 700px;
+    width: 100%;
+    margin: 20px auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    position: relative;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from { 
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to { 
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-close {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    font-size: 28px;
+    font-weight: bold;
+    color: #999;
+    cursor: pointer;
+    transition: color 0.2s;
+    line-height: 1;
+}
+
+.modal-close:hover {
+    color: #333;
+}
+
+.modal-content h2 {
+    color: #667eea;
+    margin-bottom: 20px;
+    text-align: center;
+    font-size: 1.5em;
+}
+
+.commands-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+}
+
+.command-section {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 10px;
+    border-left: 4px solid #667eea;
+}
+
+.command-section h3 {
+    color: #333;
+    margin-bottom: 10px;
+    font-size: 1em;
+}
+
+.command-section ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.command-section li {
+    padding: 5px 0;
+    font-size: 0.9em;
+    color: #555;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.command-section li:last-child {
+    border-bottom: none;
+}
+
+.command-section li strong {
+    color: #667eea;
+    font-family: 'Courier New', monospace;
+}
+
+.modal-tip {
+    margin-top: 20px;
+    padding: 12px;
+    background: linear-gradient(135deg, #667eea20, #764ba220);
+    border-radius: 8px;
+    font-size: 0.9em;
+    color: #555;
+    text-align: center;
+}
+
+@media (max-width: 600px) {
+    .commands-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .modal-content {
+        padding: 16px;
+        margin: 10px;
+    }
+    
+    .modal-content h2 {
+        font-size: 1.3em;
+    }
+    
+    .command-section {
+        padding: 12px;
+    }
+    
+    .command-section li {
+        font-size: 0.85em;
+    }
+}
+
 /* Analysis Section */
 .analysis-section {
     display: grid;
@@ -240,6 +401,23 @@ h1 {
     background: #f8f9fa;
     z-index: 1;
     padding-bottom: 4px;
+}
+
+.depth-indicator {
+    font-size: 0.75em;
+    color: #999;
+    font-weight: normal;
+    margin-left: 4px;
+}
+
+.depth-indicator.analyzing {
+    color: #f39c12;
+    animation: depthPulse 1s infinite;
+}
+
+@keyframes depthPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
 }
 
 .moves-list {

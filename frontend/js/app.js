@@ -12,6 +12,7 @@ let API_BASE_URL = 'http://127.0.0.1:8001/api';
 let soundEnabled = true;
 let moveSound = null;
 let captureSound = null;
+let outOfBookSound = null;
 
 // Store last engine analysis for "takes" command
 let lastEngineMoves = [];
@@ -24,6 +25,9 @@ let enginePlaysColor = null;
 
 // Store last master moves for engine play
 let lastMasterMoves = [];
+
+// Track if we were previously in book (for out-of-book notification)
+let wasInBook = true;
 
 // ===========================
 // Initialization
@@ -200,6 +204,10 @@ function onSnapEnd() {
 // Voice Recognition
 // ===========================
 
+// Track recognition state to prevent rapid restarts
+let recognitionRestarting = false;
+let lastRecognitionStart = 0;
+
 function initializeVoiceRecognition() {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
         document.getElementById('voiceStatus').textContent = 
@@ -214,9 +222,12 @@ function initializeVoiceRecognition() {
     recognition.continuous = false;
     recognition.interimResults = false;
     recognition.lang = 'en-US';
+    recognition.maxAlternatives = 1;
     
     recognition.onstart = () => {
         isListening = true;
+        recognitionRestarting = false;
+        lastRecognitionStart = Date.now();
         updateVoiceUI();
         document.getElementById('voiceStatus').textContent = 'Listening... Say a move!';
     };
@@ -233,8 +244,36 @@ function initializeVoiceRecognition() {
     
     recognition.onerror = (event) => {
         console.error('Speech recognition error:', event.error);
-        document.getElementById('voiceStatus').textContent = 
-            `Error: ${event.error}. Click to try again.`;
+        
+        // Handle different error types
+        switch (event.error) {
+            case 'aborted':
+                // Aborted is often caused by rapid restarts or system issues
+                // Don't show error to user, just try to restart gracefully
+                console.log('Recognition aborted, will restart...');
+                break;
+            case 'no-speech':
+                document.getElementById('voiceStatus').textContent = 'No speech detected. Try again.';
+                break;
+            case 'audio-capture':
+                document.getElementById('voiceStatus').textContent = 
+                    'No microphone found. Please check your microphone.';
+                break;
+            case 'not-allowed':
+                document.getElementById('voiceStatus').textContent = 
+                    'Microphone access denied. Please allow microphone access.';
+                // Stop trying to listen
+                document.getElementById('voiceBtn').classList.remove('listening');
+                break;
+            case 'network':
+                document.getElementById('voiceStatus').textContent = 
+                    'Network error. Please check your connection.';
+                break;
+            default:
+                document.getElementById('voiceStatus').textContent = 
+                    `Error: ${event.error}. Click to try again.`;
+        }
+        
         isListening = false;
         updateVoiceUI();
     };
@@ -242,17 +281,67 @@ function initializeVoiceRecognition() {
     recognition.onend = () => {
         isListening = false;
         updateVoiceUI();
-        if (document.getElementById('voiceBtn').classList.contains('listening')) {
-            // If still in listening mode, restart
+        
+        const btn = document.getElementById('voiceBtn');
+        
+        // Don't restart if engine is speaking (it will restart after speech ends)
+        if (isSpeaking) {
+            console.log('Recognition ended while engine speaking - will resume after speech');
+            return;
+        }
+        
+        if (btn.classList.contains('listening') && !recognitionRestarting) {
+            // Prevent rapid restarts - wait at least 300ms between starts
+            const timeSinceStart = Date.now() - lastRecognitionStart;
+            const delay = Math.max(300, 500 - timeSinceStart);
+            
+            recognitionRestarting = true;
+            
             setTimeout(() => {
-                if (document.getElementById('voiceBtn').classList.contains('listening')) {
-                    recognition.start();
+                // Double-check we're not speaking before restarting
+                if (btn.classList.contains('listening') && !isSpeaking) {
+                    try {
+                        recognition.start();
+                    } catch (e) {
+                        console.log('Could not restart recognition:', e);
+                        // Wait a bit longer and try again
+                        setTimeout(() => {
+                            if (btn.classList.contains('listening') && !isSpeaking) {
+                                try {
+                                    recognition.start();
+                                } catch (e2) {
+                                    console.error('Failed to restart recognition:', e2);
+                                    btn.classList.remove('listening');
+                                    document.getElementById('voiceStatus').textContent = 
+                                        'Voice recognition stopped. Click to restart.';
+                                }
+                            }
+                        }, 1000);
+                    }
                 }
-            }, 100);
-        } else {
+                recognitionRestarting = false;
+            }, delay);
+        } else if (!btn.classList.contains('listening')) {
             document.getElementById('voiceStatus').textContent = 'Click to start voice recognition';
         }
     };
+    
+    // Check microphone permission on init
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(stream => {
+                // Permission granted, stop the test stream
+                stream.getTracks().forEach(track => track.stop());
+                console.log('Microphone permission granted');
+            })
+            .catch(err => {
+                console.log('Microphone permission check:', err.name);
+                if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                    document.getElementById('voiceStatus').textContent = 
+                        'Microphone access needed. Click the button to enable.';
+                }
+            });
+    }
 }
 
 function toggleVoiceRecognition() {
@@ -261,13 +350,40 @@ function toggleVoiceRecognition() {
         return;
     }
     
-    if (isListening) {
-        recognition.stop();
-        document.getElementById('voiceBtn').classList.remove('listening');
+    const btn = document.getElementById('voiceBtn');
+    
+    if (isListening || btn.classList.contains('listening')) {
+        try {
+            recognition.stop();
+        } catch (e) {
+            console.log('Error stopping recognition:', e);
+        }
+        btn.classList.remove('listening');
+        recognitionRestarting = false;
         document.getElementById('voiceStatus').textContent = 'Voice recognition stopped';
     } else {
-        recognition.start();
-        document.getElementById('voiceBtn').classList.add('listening');
+        try {
+            recognition.start();
+            btn.classList.add('listening');
+        } catch (e) {
+            console.error('Error starting recognition:', e);
+            // Recognition might already be running, try stopping first
+            try {
+                recognition.stop();
+                setTimeout(() => {
+                    try {
+                        recognition.start();
+                        btn.classList.add('listening');
+                    } catch (e2) {
+                        document.getElementById('voiceStatus').textContent = 
+                            'Could not start voice recognition. Please refresh the page.';
+                    }
+                }, 500);
+            } catch (e2) {
+                document.getElementById('voiceStatus').textContent = 
+                    'Could not start voice recognition. Please refresh the page.';
+            }
+        }
     }
 }
 
@@ -292,12 +408,13 @@ function updatePauseUI() {
     const btnText = document.getElementById('voiceBtnText');
     
     if (isPaused) {
-        btnText.textContent = '⏸️ Paused';
+        btnText.textContent = '⏸️ Paused (say "resume")';
         btn.classList.add('paused');
-        btn.classList.remove('listening');
+        // Keep 'listening' class so recognition continues!
+        // This allows us to hear "resume"
     } else {
         btn.classList.remove('paused');
-        if (isListening) {
+        if (isListening || btn.classList.contains('listening')) {
             btnText.textContent = '🎤 Listening...';
             btn.classList.add('listening');
         }
@@ -313,8 +430,10 @@ function initializeSounds() {
         // Use Lichess open-source sound files
         moveSound = new Audio('https://lichess1.org/assets/sound/standard/Move.mp3');
         captureSound = new Audio('https://lichess1.org/assets/sound/standard/Capture.mp3');
+        // Use a distinct sound for "out of book" notification
+        outOfBookSound = new Audio('https://lichess1.org/assets/sound/standard/GenericNotify.mp3');
 
-        [moveSound, captureSound].forEach(audio => {
+        [moveSound, captureSound, outOfBookSound].forEach(audio => {
             audio.crossOrigin = 'anonymous';
             audio.preload = 'auto';
         });
@@ -322,15 +441,30 @@ function initializeSounds() {
         // Preload sounds
         moveSound.load();
         captureSound.load();
+        outOfBookSound.load();
         
         // Set volume
         moveSound.volume = 0.5;
         captureSound.volume = 0.5;
+        outOfBookSound.volume = 0.6;
         
         console.log('Sounds initialized');
     } catch (error) {
         console.log('Could not initialize sounds:', error);
         soundEnabled = false;
+    }
+}
+
+function playOutOfBookSound() {
+    if (!soundEnabled || !outOfBookSound) return;
+    
+    try {
+        outOfBookSound.currentTime = 0;
+        outOfBookSound.play().catch(e => {
+            console.log('Could not play out of book sound:', e);
+        });
+    } catch (error) {
+        console.log('Error playing out of book sound:', error);
     }
 }
 
@@ -858,33 +992,81 @@ function correctVoiceInput(text) {
 // Speech Synthesis
 // ===========================
 
+// Track if engine is currently speaking (to mute microphone)
+let isSpeaking = false;
+
 function speakMove(moveText) {
-    if ('speechSynthesis' in window) {
-        // Cancel any ongoing speech
-        window.speechSynthesis.cancel();
-        
-        // Convert chess notation to spoken words
-        let spoken = moveText
-            .replace(/K/g, 'King ')
-            .replace(/Q/g, 'Queen ')
-            .replace(/R/g, 'Rook ')
-            .replace(/B/g, 'Bishop ')
-            .replace(/N/g, 'Knight ')
-            .replace(/x/g, ' takes ')
-            .replace(/\+/g, ', check')
-            .replace(/#/g, ', checkmate')
-            .replace(/O-O-O/g, 'queenside castle')
-            .replace(/O-O/g, 'kingside castle')
-            .replace(/=/g, ' promotes to ');
-        
-        // Add spaces between letters and numbers for clarity
-        spoken = spoken.replace(/([a-h])([1-8])/g, '$1 $2');
-        
-        const utterance = new SpeechSynthesisUtterance(spoken);
-        utterance.rate = 0.9;
-        utterance.pitch = 1;
-        window.speechSynthesis.speak(utterance);
-    }
+    return new Promise((resolve) => {
+        if ('speechSynthesis' in window) {
+            // Cancel any ongoing speech
+            window.speechSynthesis.cancel();
+            
+            // Pause voice recognition while speaking
+            const wasListening = isListening;
+            if (recognition && wasListening) {
+                try {
+                    recognition.stop();
+                } catch (e) {
+                    console.log('Could not stop recognition for speech:', e);
+                }
+            }
+            isSpeaking = true;
+            
+            // Convert chess notation to spoken words
+            let spoken = moveText
+                .replace(/K/g, 'King ')
+                .replace(/Q/g, 'Queen ')
+                .replace(/R/g, 'Rook ')
+                .replace(/B/g, 'Bishop ')
+                .replace(/N/g, 'Knight ')
+                .replace(/x/g, ' takes ')
+                .replace(/\+/g, ', check')
+                .replace(/#/g, ', checkmate')
+                .replace(/O-O-O/g, 'queenside castle')
+                .replace(/O-O/g, 'kingside castle')
+                .replace(/=/g, ' promotes to ');
+            
+            // Add spaces between letters and numbers for clarity
+            spoken = spoken.replace(/([a-h])([1-8])/g, '$1 $2');
+            
+            const utterance = new SpeechSynthesisUtterance(spoken);
+            utterance.rate = 0.9;
+            utterance.pitch = 1;
+            
+            utterance.onend = () => {
+                isSpeaking = false;
+                // Resume voice recognition after a short delay
+                setTimeout(() => {
+                    if (wasListening && document.getElementById('voiceBtn').classList.contains('listening')) {
+                        try {
+                            recognition.start();
+                        } catch (e) {
+                            console.log('Could not restart recognition after speech:', e);
+                        }
+                    }
+                    resolve();
+                }, 300);
+            };
+            
+            utterance.onerror = () => {
+                isSpeaking = false;
+                setTimeout(() => {
+                    if (wasListening && document.getElementById('voiceBtn').classList.contains('listening')) {
+                        try {
+                            recognition.start();
+                        } catch (e) {
+                            console.log('Could not restart recognition after speech error:', e);
+                        }
+                    }
+                    resolve();
+                }, 300);
+            };
+            
+            window.speechSynthesis.speak(utterance);
+        } else {
+            resolve();
+        }
+    });
 }
 
 // ===========================
@@ -919,11 +1101,16 @@ function selectEnginePlayMove() {
         const weights = lastMasterMoves.map(m => m.total || 1);
         
         console.log('Selecting from master moves:', moves, weights);
-        return weightedRandomSelect(moves, weights);
+        wasInBook = true;
+        return { move: weightedRandomSelect(moves, weights), fromBook: true };
     }
     
     // Priority 2: Use engine moves (weighted by evaluation - better = higher weight)
     if (lastEngineMoves && lastEngineMoves.length > 0) {
+        // Check if we just left the book
+        const justLeftBook = wasInBook && enginePlaysColor;
+        wasInBook = false;
+        
         const moves = lastEngineMoves.map(m => m.move);
         
         // Convert evaluations to weights (higher eval = higher weight)
@@ -934,7 +1121,7 @@ function selectEnginePlayMove() {
         });
         
         console.log('Selecting from engine moves:', moves, weights);
-        return weightedRandomSelect(moves, weights);
+        return { move: weightedRandomSelect(moves, weights), fromBook: false, justLeftBook };
     }
     
     return null;
@@ -946,20 +1133,47 @@ async function makeEngineMoveIfNeeded() {
     // Check if it's the engine's turn
     if (game.turn() !== enginePlaysColor) return;
     
+    // Pause voice recognition while engine is "thinking" and speaking
+    const wasListeningBefore = isListening || document.getElementById('voiceBtn').classList.contains('listening');
+    if (recognition && wasListeningBefore) {
+        try {
+            recognition.stop();
+        } catch (e) {
+            console.log('Could not pause recognition for engine move:', e);
+        }
+    }
+    isSpeaking = true; // Prevent recognition restart
+    
     // Wait a moment for analysis to complete
     await new Promise(resolve => setTimeout(resolve, 800));
     
-    const moveToPlay = selectEnginePlayMove();
+    const selection = selectEnginePlayMove();
     
-    if (moveToPlay) {
-        console.log('Engine playing:', moveToPlay);
+    if (selection && selection.move) {
+        console.log('Engine playing:', selection.move, selection.fromBook ? '(from book)' : '(engine)');
+        
+        // If we just left the book, announce it
+        if (selection.justLeftBook) {
+            console.log('Left opening book - playing notification');
+            playOutOfBookSound();
+            
+            // Speak "out of book" notification
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance('Out of book');
+                utterance.rate = 1;
+                utterance.volume = 0.7;
+                await new Promise(resolve => {
+                    utterance.onend = resolve;
+                    utterance.onerror = resolve;
+                    window.speechSynthesis.speak(utterance);
+                });
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+        }
         
         try {
-            const result = game.move(moveToPlay);
+            const result = game.move(selection.move);
             if (result) {
-                // Speak the move
-                speakMove(result.san);
-                
                 // Play sound
                 playMoveSound({ isCapture: result.captured !== undefined });
                 
@@ -970,16 +1184,43 @@ async function makeEngineMoveIfNeeded() {
                 }
                 
                 updateStatus();
-                document.getElementById('voiceStatus').textContent = `Engine played: ${result.san}`;
+                const source = selection.fromBook ? '(book)' : '(engine)';
+                document.getElementById('voiceStatus').textContent = `Engine played: ${result.san} ${source}`;
+                
+                // Speak the move and wait for it to complete
+                await speakMove(result.san);
+                
+                // Resume voice recognition after speech is done
+                isSpeaking = false;
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                if (wasListeningBefore && document.getElementById('voiceBtn').classList.contains('listening')) {
+                    try {
+                        recognition.start();
+                    } catch (e) {
+                        console.log('Could not resume recognition after engine move:', e);
+                    }
+                }
                 
                 // Analyze new position (for next engine move if game continues)
                 analyzePosition();
             }
         } catch (error) {
             console.error('Error making engine move:', error);
+            isSpeaking = false;
         }
     } else {
         document.getElementById('voiceStatus').textContent = 'Engine has no moves available.';
+        isSpeaking = false;
+        
+        // Resume listening
+        if (wasListeningBefore && document.getElementById('voiceBtn').classList.contains('listening')) {
+            try {
+                recognition.start();
+            } catch (e) {
+                console.log('Could not resume recognition:', e);
+            }
+        }
     }
 }
 
@@ -988,6 +1229,9 @@ function setEngineMode(color) {
     updateEngineModeUI();
     
     if (color) {
+        // Reset book tracking when entering engine mode
+        wasInBook = true;
+        
         document.getElementById('voiceStatus').textContent = 
             `Engine plays ${color === 'w' ? 'White' : 'Black'}. You play ${color === 'w' ? 'Black' : 'White'}.`;
         
@@ -1165,6 +1409,15 @@ function parseAndMakeMove(voiceText) {
         return;
     }
     
+    // Handle show commands/help
+    if (text.includes('show commands') || text.includes('show command') || 
+        text.includes('help') || text.includes('what can i say') || 
+        text.includes('commands') || text.includes('voice commands')) {
+        showCommandsModal();
+        document.getElementById('voiceStatus').textContent = 'Showing voice commands';
+        return;
+    }
+    
     // Remove common filler words (but keep chess notation)
     const cleaned = text.replace(/\b(move|play|to|the|square)\b/gi, ' ').trim();
     
@@ -1228,9 +1481,17 @@ function parseAndMakeMove(voiceText) {
         }
     }
     
-    // Handle "pawn takes [square]"
-    const pawnTakesMatch = cleaned.match(/\b(?:pawn\s*)?(?:takes|x|captures?)\s*([a-h][1-8])\b/i);
-    if (pawnTakesMatch || (text.includes('pawn') && (text.includes('takes') || text.includes('capture')))) {
+    // Handle "pawn takes [square]" - but ONLY if no other piece is mentioned
+    const pieceNames = ['knight', 'bishop', 'rook', 'queen', 'king'];
+    const hasPieceName = pieceNames.some(piece => text.includes(piece));
+    
+    // Only try pawn capture if:
+    // 1. "pawn" is explicitly mentioned, OR
+    // 2. No other piece name is mentioned AND there's a capture pattern
+    const isPawnCapture = text.includes('pawn') || 
+        (!hasPieceName && /\b(?:takes|x|captures?)\s*([a-h][1-8])\b/i.test(cleaned));
+    
+    if (isPawnCapture && !hasPieceName) {
         // Extract target square
         const squareMatch = cleaned.match(/([a-h][1-8])/i);
         if (squareMatch) {
@@ -1380,6 +1641,10 @@ function tryAlternativeParsing(text) {
 // API Calls
 // ===========================
 
+// Track current analysis to cancel when position changes
+let currentAnalysisFen = null;
+let currentAnalysisDepth = 0;
+
 async function analyzePosition() {
     if (!game) {
         console.error('Game not initialized');
@@ -1391,48 +1656,108 @@ async function analyzePosition() {
     // Update FEN display
     document.getElementById('fen').textContent = fen;
     
+    // Cancel any ongoing analysis for a different position
+    currentAnalysisFen = fen;
+    currentAnalysisDepth = 0;
+    
     // Show loading
     document.getElementById('engineMoves').innerHTML = '<p class="loading">Analyzing...</p>';
     document.getElementById('masterMoves').innerHTML = '<p class="loading">Loading master games...</p>';
     
-    // Fetch engine moves and master moves in parallel
+    // Fetch master moves first (quick)
     try {
-        const [engineResponse, masterResponse] = await Promise.all([
-            fetch(`${API_BASE_URL}/top-moves/?fen=${encodeURIComponent(fen)}&depth=15&num_moves=5`),
-            fetch(`${API_BASE_URL}/master-moves/?fen=${encodeURIComponent(fen)}`)
-        ]);
-        
-        if (!engineResponse.ok) {
-            throw new Error(`Engine API error: ${engineResponse.status}`);
-        }
-        if (!masterResponse.ok) {
-            throw new Error(`Master games API error: ${masterResponse.status}`);
-        }
-        
-        const engineData = await engineResponse.json();
-        const masterData = await masterResponse.json();
-        
-        displayEngineMoves(engineData.moves || []);
-        displayMasterMoves(masterData);
-        
-        // If in engine play mode, make engine's move after analysis
-        if (enginePlaysColor && game.turn() === enginePlaysColor) {
-            setTimeout(makeEngineMoveIfNeeded, 600);
+        const masterResponse = await fetch(`${API_BASE_URL}/master-moves/?fen=${encodeURIComponent(fen)}`);
+        if (masterResponse.ok) {
+            const masterData = await masterResponse.json();
+            displayMasterMoves(masterData);
         }
     } catch (error) {
-        console.error('Error fetching analysis:', error);
-        document.getElementById('engineMoves').innerHTML = 
-            `<p class="placeholder">Error loading analysis: ${error.message}<br>Make sure the backend is running on http://127.0.0.1:8000</p>`;
+        console.error('Error fetching master moves:', error);
         document.getElementById('masterMoves').innerHTML = 
-            `<p class="placeholder">Error loading master games: ${error.message}</p>`;
+            `<p class="placeholder">Error loading master games</p>`;
     }
+    
+    // In engine play mode, just do depth 15 and play
+    if (enginePlaysColor) {
+        try {
+            const engineResponse = await fetch(`${API_BASE_URL}/top-moves/?fen=${encodeURIComponent(fen)}&depth=15&num_moves=5`);
+            if (engineResponse.ok) {
+                const engineData = await engineResponse.json();
+                displayEngineMoves(engineData.moves || [], 15);
+                
+                // Make engine's move if it's engine's turn
+                if (game.turn() === enginePlaysColor) {
+                    setTimeout(makeEngineMoveIfNeeded, 600);
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching engine analysis:', error);
+            document.getElementById('engineMoves').innerHTML = 
+                `<p class="placeholder">Error loading analysis: ${error.message}</p>`;
+        }
+        return;
+    }
+    
+    // Analysis mode: continuous deepening
+    await continuousDeepening(fen);
 }
 
-function displayEngineMoves(moves) {
+async function continuousDeepening(fen) {
+    // Depths to iterate through: start fast, then go deeper
+    const depths = [10, 15, 18, 22, 26, 30];
+    
+    for (const depth of depths) {
+        // Check if position changed (user made a move)
+        if (currentAnalysisFen !== fen) {
+            console.log(`Analysis cancelled - position changed (was at depth ${depth})`);
+            return;
+        }
+        
+        try {
+            console.log(`Analyzing at depth ${depth}...`);
+            const engineResponse = await fetch(`${API_BASE_URL}/top-moves/?fen=${encodeURIComponent(fen)}&depth=${depth}&num_moves=5`);
+            
+            // Check again after fetch completes
+            if (currentAnalysisFen !== fen) {
+                console.log(`Analysis cancelled after fetch - position changed`);
+                return;
+            }
+            
+            if (engineResponse.ok) {
+                const engineData = await engineResponse.json();
+                currentAnalysisDepth = depth;
+                displayEngineMoves(engineData.moves || [], depth);
+            }
+        } catch (error) {
+            console.error(`Error at depth ${depth}:`, error);
+            // Continue to next depth on error
+        }
+        
+        // Small delay between depths to not overwhelm the server
+        await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    
+    console.log('Continuous deepening complete');
+}
+
+function displayEngineMoves(moves, depth = null) {
     const container = document.getElementById('engineMoves');
     
     // Store for "takes" voice command
     lastEngineMoves = moves || [];
+    
+    // Update the header to show depth
+    const header = document.querySelector('.analysis-panel h2');
+    if (header && header.textContent.includes('Engine')) {
+        if (depth && !enginePlaysColor) {
+            // Show depth with indicator if still analyzing
+            const maxDepth = 30;
+            const isAnalyzing = depth < maxDepth;
+            header.innerHTML = `Top Engine Moves <span class="depth-indicator ${isAnalyzing ? 'analyzing' : ''}">(d${depth}${isAnalyzing ? '...' : ''})</span>`;
+        } else {
+            header.textContent = 'Top Engine Moves';
+        }
+    }
     
     if (!moves || moves.length === 0) {
         container.innerHTML = '<p class="placeholder">No moves found</p>';
@@ -1532,12 +1857,54 @@ function setupEventListeners() {
     document.getElementById('undoBtn').addEventListener('click', undoMove);
     document.getElementById('flipBtn').addEventListener('click', flipBoard);
     document.getElementById('soundBtn').addEventListener('click', toggleSound);
+    document.getElementById('helpBtn').addEventListener('click', showCommandsModal);
+    
+    // Modal close handlers
+    const modal = document.getElementById('commandsModal');
+    const closeBtn = modal.querySelector('.modal-close');
+    
+    closeBtn.addEventListener('click', hideCommandsModal);
+    
+    // Close modal when clicking outside
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            hideCommandsModal();
+        }
+    });
+    
+    // Close modal with Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.classList.contains('show')) {
+            hideCommandsModal();
+        }
+    });
+}
+
+function showCommandsModal() {
+    const modal = document.getElementById('commandsModal');
+    modal.classList.add('show');
+    document.body.style.overflow = 'hidden'; // Prevent background scrolling
+}
+
+function hideCommandsModal() {
+    const modal = document.getElementById('commandsModal');
+    modal.classList.remove('show');
+    document.body.style.overflow = ''; // Restore scrolling
 }
 
 function resetGame() {
     if (!game || !board) return;
     
     game.reset();
+    
+    // Reset book tracking
+    wasInBook = true;
+    lastMasterMoves = [];
+    lastEngineMoves = [];
+    
+    // Cancel any ongoing analysis
+    currentAnalysisFen = null;
+    currentAnalysisDepth = 0;
     
     // Use requestAnimationFrame for smoother updates
     requestAnimationFrame(() => {
@@ -1546,6 +1913,12 @@ function resetGame() {
     });
     
     updateStatus();
+    
+    // Reset header and content
+    const header = document.querySelector('.analysis-panel h2');
+    if (header && header.textContent.includes('Engine')) {
+        header.textContent = 'Top Engine Moves';
+    }
     document.getElementById('engineMoves').innerHTML = 
         '<p class="placeholder">Make a move to see engine analysis</p>';
     document.getElementById('masterMoves').innerHTML = 
@@ -1555,14 +1928,45 @@ function resetGame() {
 function undoMove() {
     if (!game || !board) return;
     
-    const move = game.undo();
-    if (move) {
+    // In engine mode, undo two moves so it's the player's turn again
+    if (enginePlaysColor) {
+        const playerColor = enginePlaysColor === 'w' ? 'b' : 'w';
+        
+        // Undo first move
+        const move1 = game.undo();
+        if (!move1) return;
+        
+        // If it's still not the player's turn, undo another move
+        if (game.turn() !== playerColor) {
+            const move2 = game.undo();
+            if (move2) {
+                console.log(`Undid 2 moves: ${move2.san} and ${move1.san}`);
+                document.getElementById('voiceStatus').textContent = 
+                    `Undid ${move2.san} and ${move1.san}. Your turn.`;
+            }
+        } else {
+            console.log(`Undid 1 move: ${move1.san}`);
+            document.getElementById('voiceStatus').textContent = 
+                `Undid ${move1.san}. Your turn.`;
+        }
+        
         // Use requestAnimationFrame for smoother updates
         requestAnimationFrame(() => {
             board.position(game.fen());
         });
         updateStatus();
         analyzePosition();
+    } else {
+        // Normal mode - just undo one move
+        const move = game.undo();
+        if (move) {
+            // Use requestAnimationFrame for smoother updates
+            requestAnimationFrame(() => {
+                board.position(game.fen());
+            });
+            updateStatus();
+            analyzePosition();
+        }
     }
 }
 
