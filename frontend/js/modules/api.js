@@ -34,6 +34,7 @@ export async function analyzePosition() {
     
     state.currentAnalysisFen = fen;
     state.currentAnalysisDepth = 0;
+    state.masterGamesLoaded = false;  // Reset until we get a response
     
     // Show loading
     document.getElementById('engineMoves').innerHTML = '<p class="loading">Analyzing...</p>';
@@ -48,7 +49,12 @@ export async function analyzePosition() {
         if (masterResponse.ok) {
             const masterData = await masterResponse.json();
             displayMasterMoves(masterData);
+        } else {
+            // API returned error - mark as loaded but empty
+            state.lastMasterMoves = [];
+            state.lastTopGames = [];
         }
+        state.masterGamesLoaded = true;
     } catch (error) {
         if (error.name === 'AbortError') {
             console.log('Master moves fetch aborted');
@@ -57,6 +63,10 @@ export async function analyzePosition() {
         console.error('Error fetching master moves:', error);
         document.getElementById('masterMoves').innerHTML = 
             `<p class="placeholder">Error loading master games</p>`;
+        // Mark as loaded even on error so engine doesn't wait forever
+        state.masterGamesLoaded = true;
+        state.lastMasterMoves = [];
+        state.lastTopGames = [];
     }
     
     // In engine play mode, just do depth 15 and play

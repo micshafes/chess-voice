@@ -437,12 +437,28 @@ function parseChessMove(text, originalText) {
             const targetSquare = squareMatch[1].toLowerCase();
             const pawnCaptures = findPawnCaptures(targetSquare);
             
-            if (pawnCaptures.length === 1) {
-                makeMoveAndUpdate(pawnCaptures[0]);
+            // Check if user provided file disambiguation (e.g., "e takes f6")
+            // Look for a single letter [a-h] before "takes/x/captures"
+            const disambiguationMatch = cleaned.match(/\b([a-h])\s*(?:x|takes|captures?)/i);
+            const disambiguationFile = disambiguationMatch ? disambiguationMatch[1].toLowerCase() : null;
+            
+            // Filter by disambiguation if provided
+            let filteredCaptures = pawnCaptures;
+            if (disambiguationFile) {
+                filteredCaptures = pawnCaptures.filter(m => m.from[0] === disambiguationFile);
+            }
+            
+            if (filteredCaptures.length === 1) {
+                makeMoveAndUpdate(filteredCaptures[0]);
                 return;
-            } else if (pawnCaptures.length > 1) {
+            } else if (filteredCaptures.length > 1) {
                 document.getElementById('voiceStatus').textContent = 
                     `Two pawns can take on ${targetSquare}. Say "${pawnCaptures[0].from[0]} takes ${targetSquare}" or "${pawnCaptures[1].from[0]} takes ${targetSquare}"`;
+                return;
+            } else if (filteredCaptures.length === 0 && disambiguationFile) {
+                // User specified a file but no pawn from that file can capture
+                document.getElementById('voiceStatus').textContent = 
+                    `No pawn on the ${disambiguationFile}-file can capture on ${targetSquare}.`;
                 return;
             } else if (pawnCaptures.length === 0) {
                 document.getElementById('voiceStatus').textContent = 

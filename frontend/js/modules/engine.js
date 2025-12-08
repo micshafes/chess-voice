@@ -96,7 +96,9 @@ export function selectEnginePlayMove() {
     
     // Priority 2: Use engine moves
     if (state.lastEngineMoves && state.lastEngineMoves.length > 0) {
-        const justLeftBook = state.wasInBook && state.enginePlaysColor;
+        // Only mark as "left book" if master games API has responded with no moves
+        // This prevents false "out of book" when API is just slow
+        const justLeftBook = state.wasInBook && state.enginePlaysColor && state.masterGamesLoaded;
         state.wasInBook = false;
         state.lastGrandmasterInfo = null;
         

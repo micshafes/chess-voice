@@ -42,6 +42,7 @@ export const state = {
     
     // Book tracking
     wasInBook: true,
+    masterGamesLoaded: false,  // True when master games API has responded for current position
     
     // Analysis state
     currentAnalysisFen: null,
@@ -58,6 +59,7 @@ export function resetAnalysisState() {
     state.lastTopGames = [];
     state.lastGrandmasterInfo = null;
     state.wasInBook = true;
+    state.masterGamesLoaded = false;
     state.currentAnalysisFen = null;
     state.currentAnalysisDepth = 0;
     if (state.currentAnalysisController) {
