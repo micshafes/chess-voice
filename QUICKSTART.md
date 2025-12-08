@@ -3,8 +3,8 @@
 ## Prerequisites Check
 
 1. **Python 3.8+** installed
-2. **Stockfish executable** available (see setup below)
-3. **Master games database** (optional, but recommended)
+2. **Stockfish executable** available (included for Windows, see setup for other OS)
+3. **Internet connection** for Lichess master games API
 
 ## Setup Steps
 
@@ -17,26 +17,16 @@ pip install -r requirements.txt
 
 ### 2. Set Up Stockfish
 
-**Option A: Copy from restock-chess (if available)**
-```bash
-# Copy stockfish.exe from restock-chess
-cp ../restock-chess/backend/stockfish/stockfish.exe backend/stockfish/
-```
+**Windows users:** Stockfish is already included at `backend/stockfish/stockfish.exe`
 
-**Option B: Download Stockfish**
+**Linux/Mac users:**
 - Download from https://stockfishchess.org/download/
-- Place `stockfish.exe` in `chess-voice/backend/stockfish/`
+- Place executable in `chess-voice/backend/stockfish/`
+- Make it executable: `chmod +x backend/stockfish/stockfish`
 
-### 3. Set Up Master Games Database (Optional)
+### 3. Master Games (No Setup Needed!)
 
-**Option A: Copy from chess-gift (if available)**
-```bash
-# Copy the master games JSON file
-cp ../chess-gift/data/json/chess_positions_frontend.json backend/data/
-```
-
-**Option B: Use without master games**
-- The app will work without it, but won't show master game data
+Master games data is fetched live from the **Lichess Opening Explorer API** - no local database required!
 
 ## Running the Application
 
@@ -56,22 +46,21 @@ chmod +x start_backend.sh
 **Or manually:**
 ```bash
 cd backend
-python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
+python -m uvicorn main:app --reload --host 127.0.0.1 --port 8001
 ```
 
-The backend will start on `http://127.0.0.1:8000`
+The backend will start on `http://127.0.0.1:8001`
 
 ### Start the Frontend
 
-**Option A: Use the Python server**
+**Use the Python server (recommended):**
 ```bash
-cd frontend
 python serve.py
 ```
 
-**Option B: Open directly**
-- Open `frontend/index.html` in Chrome or Edge browser
-- Note: Some features may not work with `file://` protocol, so using a server is recommended
+This will start the frontend on `http://localhost:8000` and open it in your browser.
+
+> **Note:** Opening `index.html` directly won't work because the app uses ES Modules which require a web server.
 
 ## Using Voice Recognition
 
@@ -99,14 +88,14 @@ python serve.py
 - **Check Stockfish path**: Verify `stockfish.exe` exists in `backend/stockfish/`
 
 ### No engine analysis
-- **Verify backend is running**: Check `http://127.0.0.1:8000/api/health/`
+- **Verify backend is running**: Check `http://127.0.0.1:8001/api/health/`
 - **Check browser console**: Open DevTools (F12) and look for errors
 - **Verify CORS**: Backend should allow all origins for local development
 
 ### Master games not showing
-- **Check file path**: Verify JSON file exists in one of the expected locations
-- **Check file format**: Should be valid JSON with position data
-- **Not critical**: App works without master games, just won't show that data
+- **Check internet connection**: Master games are fetched from Lichess API
+- **Check browser console**: Look for network errors (F12 → Network tab)
+- **Position may not exist**: Many positions won't have master game data
 
 ## Example Voice Commands
 

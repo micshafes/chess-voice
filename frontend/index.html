@@ -168,7 +168,7 @@
         </div>
     </div>
 
-    <!-- Scripts -->
+    <!-- Scripts - Load dependencies first, then app module -->
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"
             integrity="sha384-ZvpUoO/+PpLXR1lu4jmpXWu80pZlYUAfxl5NsBMWOEPSjUn/6Z/hRTt8+pR6L4N2"
             crossorigin="anonymous"></script>
@@ -176,7 +176,10 @@
             integrity="sha384-8Vi8VHwn3vjQ9eUHUxex3JSN/NFqUg3QbPyX8kWyb93+8AC/pPWTzj+nHtbC5bxD"
             crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.js"></script>
-    <script src="js/app.js" defer></script>
+    
+    <!-- Main app as ES module -->
+    <script type="module" src="js/main.js"></script>
+    
     <script>
         // Initialize Lucide icons after DOM loads
         document.addEventListener('DOMContentLoaded', () => {
@@ -185,5 +188,3 @@
     </script>
 </body>
 </html>
-
-

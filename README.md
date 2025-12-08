@@ -117,10 +117,41 @@ chess-voice/
 └── frontend/
     ├── index.html              # Main HTML file
     ├── css/
-    │   └── styles.css         # Styling
+    │   └── styles.css          # Styling
     └── js/
-        └── app.js             # Frontend logic
+        ├── main.js             # Application entry point
+        ├── config.js           # Configuration constants
+        ├── state.js            # Centralized state management
+        └── modules/
+            ├── api.js          # API calls & data display
+            ├── board.js        # Chessboard setup & controls
+            ├── commands.js     # Voice correction dictionary
+            ├── engine.js       # Engine play mode logic
+            ├── moves.js        # Move parsing & execution
+            ├── sound.js        # Audio effects
+            ├── speech.js       # Text-to-speech synthesis
+            ├── ui.js           # DOM updates & theme
+            └── voice.js        # Voice recognition
 ```
+
+## Frontend Architecture
+
+The frontend uses **ES Modules** for maintainability:
+
+| Module | Purpose |
+|--------|---------|
+| `main.js` | Entry point, initializes all modules |
+| `config.js` | API URLs, timing values, feature flags |
+| `state.js` | Single source of truth for app state |
+| `modules/api.js` | Fetches engine & master game data |
+| `modules/board.js` | Chessboard.js wrapper, move handling |
+| `modules/commands.js` | Voice recognition error corrections |
+| `modules/engine.js` | Engine vs player game mode |
+| `modules/moves.js` | Parses voice input into chess moves |
+| `modules/sound.js` | Move, capture, and notification sounds |
+| `modules/speech.js` | Speaks moves aloud |
+| `modules/ui.js` | Theme toggle, modals, event listeners |
+| `modules/voice.js` | Web Speech API integration |
 
 ## Troubleshooting
 
