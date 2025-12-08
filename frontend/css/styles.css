@@ -288,10 +288,12 @@ body.dark-mode .control-btn.theme-btn .dark-icon {
     flex-direction: column;
     align-items: center;
     gap: 10px;
-    margin: 15px 0;
+    margin: 15px auto;
     padding: 15px;
     background: var(--bg-secondary);
     border-radius: 6px;
+    max-width: 500px;
+    width: 100%;
 }
 
 .engine-control-group {
@@ -300,6 +302,7 @@ body.dark-mode .control-btn.theme-btn .dark-icon {
     gap: 10px;
     flex-wrap: wrap;
     justify-content: center;
+    width: 100%;
 }
 
 .engine-mode-btn {
@@ -578,9 +581,11 @@ body.dark-mode .control-btn.theme-btn .dark-icon {
     border-radius: 6px;
     border: 1px solid var(--border-color);
     overflow-y: auto;
-    max-height: min(300px, calc(100vh - 500px));
-    min-height: 120px;
+    height: min(300px, calc(100vh - 500px));
+    min-height: 200px;
     box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
 }
 
 .analysis-panel h2 {
@@ -609,7 +614,10 @@ body.dark-mode .control-btn.theme-btn .dark-icon {
 }
 
 .moves-list {
-    min-height: 80px;
+    min-height: 150px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
 }
 
 .move-item {
@@ -838,6 +846,10 @@ body.dark-mode .control-btn.theme-btn .dark-icon {
     text-align: center;
     padding: 15px;
     font-size: 0.9em;
+    min-height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 /* Status Info */
@@ -868,6 +880,10 @@ body.dark-mode .control-btn.theme-btn .dark-icon {
     color: var(--text-muted);
     font-style: italic;
     font-size: clamp(0.8em, 1.8vw, 0.95em);
+    min-height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 /* Large screens - side by side layout */
@@ -905,7 +921,8 @@ body.dark-mode .control-btn.theme-btn .dark-icon {
     }
     
     .analysis-panel {
-        max-height: 280px;
+        height: 280px;
+        min-height: 280px;
     }
     
     #myBoard {
@@ -929,8 +946,8 @@ body.dark-mode .control-btn.theme-btn .dark-icon {
     }
     
     .analysis-panel {
-        max-height: min(200px, calc(100vh - 550px));
-        min-height: 100px;
+        height: min(200px, calc(100vh - 550px));
+        min-height: 150px;
     }
 }
 
@@ -946,8 +963,8 @@ body.dark-mode .control-btn.theme-btn .dark-icon {
     }
     
     .analysis-panel {
-        max-height: min(180px, calc(50vh - 200px));
-        min-height: 90px;
+        height: min(180px, calc(50vh - 200px));
+        min-height: 120px;
     }
 }
 
@@ -972,8 +989,8 @@ body.dark-mode .control-btn.theme-btn .dark-icon {
     
     .analysis-panel {
         padding: 8px;
-        max-height: min(150px, calc(50vh - 180px));
-        min-height: 80px;
+        height: min(150px, calc(50vh - 180px));
+        min-height: 100px;
     }
     
     .move-item {
@@ -1031,8 +1048,8 @@ body.dark-mode .control-btn.theme-btn .dark-icon {
     }
     
     .analysis-panel {
-        max-height: min(160px, calc(100vh - 480px));
-        min-height: 80px;
+        height: min(160px, calc(100vh - 480px));
+        min-height: 120px;
         padding: 8px;
     }
     
@@ -1042,7 +1059,7 @@ body.dark-mode .control-btn.theme-btn .dark-icon {
     }
     
     .moves-list {
-        min-height: 60px;
+        min-height: 100px;
     }
     
     .status-info {
@@ -1100,8 +1117,8 @@ body.dark-mode .control-btn.theme-btn .dark-icon {
     }
     
     .analysis-panel {
-        max-height: min(130px, calc(100vh - 420px));
-        min-height: 70px;
+        height: min(130px, calc(100vh - 420px));
+        min-height: 100px;
         padding: 6px;
     }
     
@@ -1176,7 +1193,8 @@ body.dark-mode .control-btn.theme-btn .dark-icon {
     }
     
     .analysis-panel {
-        max-height: min(180px, calc(50vh - 100px));
+        height: min(180px, calc(50vh - 100px));
+        min-height: 150px;
     }
     
     .status-info {
