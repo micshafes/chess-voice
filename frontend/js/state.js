@@ -48,6 +48,11 @@ export const state = {
     currentAnalysisFen: null,
     currentAnalysisDepth: 0,
     currentAnalysisController: null,
+    
+    // Position cache stack - stores analysis data for each position in current game path
+    // Each entry: { fen, engineMoves, masterMoves, masterData, depth }
+    // Stack grows as we make moves, shrinks on undo
+    positionStack: [],
 };
 
 /**
@@ -62,6 +67,7 @@ export function resetAnalysisState() {
     state.masterGamesLoaded = false;
     state.currentAnalysisFen = null;
     state.currentAnalysisDepth = 0;
+    state.positionStack = [];  // Clear position cache
     if (state.currentAnalysisController) {
         state.currentAnalysisController.abort();
         state.currentAnalysisController = null;

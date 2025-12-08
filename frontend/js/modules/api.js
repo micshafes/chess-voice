@@ -9,6 +9,30 @@ import { playMoveSound } from './sound.js';
 // Note: makeEngineMoveIfNeeded is imported dynamically to avoid circular dependency with engine.js
 
 /**
+ * Push current position analysis to the cache stack
+ * @param {string} fen - Position FEN
+ * @param {Array} engineMoves - Engine moves data
+ * @param {Object} masterData - Master games data
+ * @param {number} depth - Analysis depth
+ */
+function pushToPositionStack(fen, engineMoves, masterData, depth) {
+    // Remove any existing entry for this FEN (shouldn't happen, but safety check)
+    state.positionStack = state.positionStack.filter(entry => entry.fen !== fen);
+    
+    // Push new entry
+    state.positionStack.push({
+        fen: fen,
+        engineMoves: engineMoves || [],
+        masterMoves: state.lastMasterMoves || [],
+        topGames: state.lastTopGames || [],
+        masterData: masterData || null,
+        depth: depth || null,
+    });
+    
+    console.log(`Cached position in stack (${state.positionStack.length} entries)`);
+}
+
+/**
  * Analyze the current position - fetches engine and master moves
  */
 export async function analyzePosition() {
@@ -22,6 +46,31 @@ export async function analyzePosition() {
     // Update FEN display
     document.getElementById('fen').textContent = fen;
     
+    // Check if we have cached data for this position in the stack
+    // Look for the last entry in the stack that matches this FEN
+    for (let i = state.positionStack.length - 1; i >= 0; i--) {
+        const cached = state.positionStack[i];
+        if (cached.fen === fen) {
+            console.log('Using cached analysis for position');
+            // Restore cached data
+            state.lastEngineMoves = cached.engineMoves || [];
+            state.lastMasterMoves = cached.masterMoves || [];
+            state.lastTopGames = cached.topGames || [];
+            state.masterGamesLoaded = true;
+            
+            // Display cached data
+            displayEngineMoves(cached.engineMoves || [], cached.depth || null, true);
+            if (cached.masterData) {
+                displayMasterMoves(cached.masterData);
+            } else {
+                document.getElementById('masterMoves').innerHTML = 
+                    '<p class="placeholder">No master games cached</p>';
+            }
+            return;  // Skip API calls
+        }
+    }
+    
+    // No cache found - proceed with API calls
     // Cancel any ongoing analysis
     if (state.currentAnalysisController) {
         state.currentAnalysisController.abort();
@@ -41,13 +90,14 @@ export async function analyzePosition() {
     document.getElementById('masterMoves').innerHTML = '<p class="loading">Loading master games...</p>';
     
     // Fetch master moves first (quick)
+    let masterData = null;
     try {
         const masterResponse = await fetch(
             `${CONFIG.API_BASE_URL}/master-moves/?fen=${encodeURIComponent(fen)}`,
             { signal }
         );
         if (masterResponse.ok) {
-            const masterData = await masterResponse.json();
+            masterData = await masterResponse.json();
             displayMasterMoves(masterData);
         } else {
             // API returned error - mark as loaded but empty
@@ -78,7 +128,11 @@ export async function analyzePosition() {
             );
             if (engineResponse.ok) {
                 const engineData = await engineResponse.json();
-                displayEngineMoves(engineData.moves || [], CONFIG.ENGINE.DEFAULT_DEPTH);
+                const engineMoves = engineData.moves || [];
+                displayEngineMoves(engineMoves, CONFIG.ENGINE.DEFAULT_DEPTH);
+                
+                // Push to cache stack
+                pushToPositionStack(fen, engineMoves, masterData, CONFIG.ENGINE.DEFAULT_DEPTH);
                 
                 if (state.game.turn() === state.enginePlaysColor) {
                     // Dynamic import to avoid circular dependency
@@ -100,7 +154,12 @@ export async function analyzePosition() {
     }
     
     // Analysis mode: continuous deepening
-    await continuousDeepening(fen, signal);
+    const finalEngineMoves = await continuousDeepening(fen, signal);
+    
+    // Push to cache stack after analysis completes
+    if (finalEngineMoves) {
+        pushToPositionStack(fen, finalEngineMoves, masterData, state.currentAnalysisDepth);
+    }
 }
 
 /**
@@ -110,11 +169,12 @@ export async function analyzePosition() {
  */
 async function continuousDeepening(fen, signal) {
     const depths = CONFIG.ENGINE.ANALYSIS_DEPTHS;
+    let finalEngineMoves = null;
     
     for (const depth of depths) {
         if (signal.aborted) {
             console.log(`Analysis aborted at depth ${depth}`);
-            return;
+            return finalEngineMoves;
         }
         
         try {
@@ -126,13 +186,15 @@ async function continuousDeepening(fen, signal) {
             
             if (engineResponse.ok) {
                 const engineData = await engineResponse.json();
+                const engineMoves = engineData.moves || [];
                 state.currentAnalysisDepth = depth;
-                displayEngineMoves(engineData.moves || [], depth, depth === depths[depths.length - 1]);
+                finalEngineMoves = engineMoves;  // Keep track of latest moves
+                displayEngineMoves(engineMoves, depth, depth === depths[depths.length - 1]);
             }
         } catch (error) {
             if (error.name === 'AbortError') {
                 console.log(`Analysis aborted during depth ${depth} fetch`);
-                return;
+                return finalEngineMoves;
             }
             console.error(`Error at depth ${depth}:`, error);
         }
@@ -143,6 +205,7 @@ async function continuousDeepening(fen, signal) {
     }
     
     console.log('Continuous deepening complete');
+    return finalEngineMoves;
 }
 
 /**

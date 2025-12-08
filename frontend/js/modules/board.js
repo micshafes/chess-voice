@@ -174,6 +174,10 @@ export function resetGame() {
     state.lastMasterMoves = [];
     state.lastEngineMoves = [];
     
+    // Clear position cache stack
+    state.positionStack = [];
+    console.log('Cleared position cache stack');
+    
     // Cancel any ongoing analysis
     state.currentAnalysisFen = null;
     state.currentAnalysisDepth = 0;
@@ -202,6 +206,12 @@ export function resetGame() {
 export function undoMove() {
     if (!state.game || !state.board) return;
     
+    // Pop current position from cache stack (we're going back)
+    if (state.positionStack.length > 0) {
+        state.positionStack.pop();
+        console.log(`Popped position from cache stack (${state.positionStack.length} remaining)`);
+    }
+    
     // In engine mode, undo two moves so it's the player's turn again
     if (state.enginePlaysColor) {
         const playerColor = state.enginePlaysColor === 'w' ? 'b' : 'w';
@@ -209,6 +219,11 @@ export function undoMove() {
         // Undo first move
         const move1 = state.game.undo();
         if (!move1) return;
+        
+        // Pop again if we undo a second move
+        if (state.positionStack.length > 0) {
+            state.positionStack.pop();
+        }
         
         // If it's still not the player's turn, undo another move
         if (state.game.turn() !== playerColor) {
@@ -228,7 +243,7 @@ export function undoMove() {
             state.board.position(state.game.fen());
         });
         updateStatus();
-        analyzePosition();
+        analyzePosition();  // Will use cached data from stack
     } else {
         // Normal mode - just undo one move
         const move = state.game.undo();
@@ -237,7 +252,7 @@ export function undoMove() {
                 state.board.position(state.game.fen());
             });
             updateStatus();
-            analyzePosition();
+            analyzePosition();  // Will use cached data from stack
         }
     }
 }
