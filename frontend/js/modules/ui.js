@@ -7,7 +7,7 @@ import { state } from '../state.js';
 import { toggleVoiceRecognition } from './voice.js';
 import { resetGame, undoMove, flipBoard } from './board.js';
 import { toggleSound, updateSoundButton } from './sound.js';
-import { toggleEngineMode, setEngineColor, toggleGrandmasterMode, updateEngineModeUI } from './engine.js';
+import { toggleEngineMode, setEngineColor, toggleGrandmasterMode, updateEngineModeUI, setEngineStrength, toggleAnnounceMute } from './engine.js';
 
 /**
  * Set up all event listeners
@@ -55,6 +55,20 @@ export function setupEventListeners() {
         const grandmasterCheckbox = document.getElementById('grandmasterModeCheckbox');
         if (grandmasterCheckbox) {
             grandmasterCheckbox.addEventListener('change', toggleGrandmasterMode);
+        }
+        
+        // Engine strength buttons
+        const strengthButtons = document.querySelectorAll('.strength-btn');
+        strengthButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const strength = parseInt(btn.getAttribute('data-strength'));
+                setEngineStrength(strength);
+            });
+        });
+        
+        const announceMuteBtn = document.getElementById('announceMuteBtn');
+        if (announceMuteBtn) {
+            announceMuteBtn.addEventListener('click', toggleAnnounceMute);
         }
         
         // Initialize theme
@@ -159,6 +173,15 @@ export function initializeUI() {
         if (whiteBtn) {
             whiteBtn.classList.add('active');
         }
+        
+        // Set default strength button (2000)
+        const strengthButtons = document.querySelectorAll('.strength-btn');
+        strengthButtons.forEach(btn => {
+            const strength = parseInt(btn.getAttribute('data-strength'));
+            if (strength === state.engineStrength) {
+                btn.classList.add('active');
+            }
+        });
     } catch (error) {
         console.error('Error initializing engine mode UI:', error);
     }

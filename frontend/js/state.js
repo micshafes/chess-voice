@@ -21,6 +21,8 @@ export const state = {
     
     // Speech synthesis
     isSpeaking: false,
+    /** When true, engine/grandmaster move announcements are muted */
+    announceMuted: false,
     
     // Sound
     soundEnabled: true,
@@ -33,6 +35,7 @@ export const state = {
     // Engine play mode
     enginePlaysColor: null,  // null = analysis mode, 'w' = engine plays white, 'b' = engine plays black
     grandmasterMode: false,
+    engineStrength: 2000,  // Engine strength rating: 1000, 1500, 2000, or 2500
     
     // Analysis data (stored for voice commands and engine play)
     lastEngineMoves: [],

@@ -8,10 +8,15 @@ import { state } from '../state.js';
 /**
  * Speak a chess move using text-to-speech
  * @param {string} moveText - The move in chess notation (e.g., "Nf3", "O-O")
+ * @param {{ fromEngine?: boolean }} [options] - If fromEngine is true, respect announceMuted
  * @returns {Promise} Resolves when speech is complete
  */
-export function speakMove(moveText) {
+export function speakMove(moveText, options = {}) {
     return new Promise((resolve) => {
+        if (state.announceMuted && options.fromEngine) {
+            resolve();
+            return;
+        }
         if ('speechSynthesis' in window) {
             // Cancel any ongoing speech and ensure not paused (Chrome bug workaround)
             window.speechSynthesis.cancel();
@@ -111,10 +116,15 @@ function resumeRecognitionAfterSpeech(wasListening) {
 /**
  * Speak a simple message (not a chess move)
  * @param {string} text - The text to speak
+ * @param {{ fromEngine?: boolean }} [options] - If fromEngine is true, respect announceMuted
  * @returns {Promise} Resolves when speech is complete
  */
-export function speakText(text) {
+export function speakText(text, options = {}) {
     return new Promise((resolve) => {
+        if (state.announceMuted && options.fromEngine) {
+            resolve();
+            return;
+        }
         if ('speechSynthesis' in window) {
             window.speechSynthesis.cancel();
             window.speechSynthesis.resume();

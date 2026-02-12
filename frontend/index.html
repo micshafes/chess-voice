@@ -70,11 +70,27 @@
                     <button id="engineBlackBtn" class="color-btn" data-color="b">Black</button>
                 </div>
             </div>
+            <div class="engine-control-group" id="engineStrengthGroup" style="display: none;">
+                <label class="engine-label">Engine Strength:</label>
+                <div class="strength-selector">
+                    <button class="strength-btn" data-strength="1000">1000</button>
+                    <button class="strength-btn" data-strength="1500">1500</button>
+                    <button class="strength-btn" data-strength="2000">2000</button>
+                    <button class="strength-btn" data-strength="2500">2500</button>
+                </div>
+            </div>
             <div class="engine-control-group" id="grandmasterGroup" style="display: none;">
                 <label class="engine-label">
                     <input type="checkbox" id="grandmasterModeCheckbox">
                     <span>Grandmaster Mode</span>
                 </label>
+            </div>
+            <div class="engine-control-group" id="announceMuteGroup" style="display: none;">
+                <button id="announceMuteBtn" class="announce-mute-btn" title="Mute move announcements">
+                    <i data-lucide="volume-2" class="announce-on-icon"></i>
+                    <i data-lucide="volume-x" class="announce-off-icon"></i>
+                    <span id="announceMuteBtnText">Mute announcements</span>
+                </button>
             </div>
             <div class="engine-control-group" id="grandmasterInfoGroup" style="display: none;">
                 <div id="grandmasterInfo" class="grandmaster-info"></div>

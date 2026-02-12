@@ -373,6 +373,71 @@ body.dark-mode .control-btn.theme-btn .dark-icon {
     border-color: var(--accent);
 }
 
+.strength-selector {
+    display: flex;
+    gap: 8px;
+}
+
+.strength-btn {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: 2px solid var(--border-color);
+    padding: 8px 16px;
+    font-size: 0.9em;
+    font-weight: 500;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    min-width: 60px;
+}
+
+.strength-btn:hover {
+    background: var(--bg-secondary);
+    border-color: var(--accent);
+}
+
+.strength-btn.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+}
+
+/* Mute announcements button (engine/grandmaster mode) */
+.announce-mute-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: 2px solid var(--border-color);
+    padding: 8px 14px;
+    font-size: 0.9em;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+}
+.announce-mute-btn:hover {
+    background: var(--bg-secondary);
+    border-color: var(--accent);
+}
+.announce-mute-btn svg {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+.announce-mute-btn .announce-off-icon {
+    display: none;
+}
+.announce-mute-btn.muted .announce-on-icon {
+    display: none;
+}
+.announce-mute-btn.muted .announce-off-icon {
+    display: block;
+}
+.announce-mute-btn.muted {
+    color: var(--text-muted);
+}
+
 .grandmaster-info {
     padding: 8px 12px;
     background: var(--bg-card);
