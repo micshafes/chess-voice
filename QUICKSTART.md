@@ -28,6 +28,8 @@ pip install -r requirements.txt
 
 Master games data is fetched live from the **Lichess Opening Explorer API** - no local database required!
 
+Note: Lichess requires an OAuth token for Opening Explorer requests. To enable master games, set an environment variable named `LICHESS_OAUTH_TOKEN` before starting the backend.
+
 ## Running the Application
 
 ### Start the Backend

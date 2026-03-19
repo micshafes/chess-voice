@@ -47,4 +47,5 @@ chess_env/
 # Note: stockfish.exe is included in the repo for Windows users
 # Linux/Mac users will need to download their platform's version
 
-
+# Lichess OAuth token
+backend/lichess_oauth.txt

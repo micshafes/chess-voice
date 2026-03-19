@@ -3,11 +3,13 @@ import logging
 import urllib.request
 import urllib.parse
 import urllib.error
+import os
 
 logger = logging.getLogger(__name__)
 
 # Lichess Opening Explorer API endpoint for master games
-LICHESS_MASTERS_API = "https://explorer.lichess.ovh/masters"
+LICHESS_MASTERS_API = "https://explorer.lichess.org/masters"
+LICHESS_OAUTH_TOKEN = os.getenv("LICHESS_OAUTH_TOKEN", "").strip()
 
 def _normalize_fen(fen: str) -> str:
     """Normalize FEN to first 4 parts (position, active color, castling, en passant)."""
@@ -45,6 +47,10 @@ def get_master_moves(fen: str):
         
         req = urllib.request.Request(url)
         req.add_header('User-Agent', 'Chess-Voice/1.0')
+        req.add_header('Accept', 'application/json')
+        if LICHESS_OAUTH_TOKEN:
+            # Lichess Opening Explorer now requires an OAuth token for authenticated requests.
+            req.add_header('Authorization', f'Bearer {LICHESS_OAUTH_TOKEN}')
         
         with urllib.request.urlopen(req, timeout=5) as response:
             data = json.loads(response.read().decode('utf-8'))
@@ -107,6 +113,16 @@ def get_master_moves(fen: str):
             }
             
     except urllib.error.URLError as e:
+        # urllib groups HTTP errors under URLError; handle 401 explicitly for clarity.
+        status = getattr(e, "code", None)
+        if status == 401:
+            logger.error(f"Error connecting to Lichess API (401): Unauthorized")
+            return {
+                'moves': [],
+                'total_games': 0,
+                'found': False,
+                'error': 'Lichess Opening Explorer requires authentication. Set LICHESS_OAUTH_TOKEN.'
+            }
         logger.error(f"Error connecting to Lichess API: {e}")
         return {
             'moves': [],

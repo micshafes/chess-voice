@@ -17,6 +17,7 @@ A voice-controlled chess analysis application that allows you to analyze chess p
 - Stockfish executable (download from https://stockfishchess.org/download/ or copy from another project)
 - Internet connection (for Lichess API)
 - Modern web browser with Web Speech API support (Chrome, Edge recommended)
+- Lichess OAuth token (required for Lichess master games / opening explorer API)
 
 ## Installation
 
@@ -47,7 +48,23 @@ A voice-controlled chess analysis application that allows you to analyze chess p
    
    This will start the backend API on `http://127.0.0.1:8001/api`
 
-2. **Start the frontend (in a new terminal):**
+2. **(One-time) Create and set your Lichess OAuth token (for master games)**
+   
+   Lichess now requires OAuth authentication for the Opening Explorer “masters” API.
+   
+   1. Create a token here: [https://lichess.org/account/oauth/token/create](https://lichess.org/account/oauth/token/create)
+   2. Sign in to Lichess (and complete 2FA if prompted).
+   3. Add a description for the token.
+   4. If there is a “scopes” selector, choose the API/bot scope available for API access (commonly `bot:play` / “Play games with the bot API”).
+   5. Generate the token and copy it immediately (Lichess won’t show it again later).
+   
+   **Where to store it (for local dev / sharing the repo):**
+   - Preferred: set environment variable `LICHESS_OAUTH_TOKEN` to the token value, or
+   - Use this repo’s file-based option: create `backend/lichess_oauth.txt` containing only the token (no quotes).
+   
+   This repo’s `start_backend.py` / `start_backend.bat` will automatically load `backend/lichess_oauth.txt` into `LICHESS_OAUTH_TOKEN` if the env var isn’t set. The token file is gitignored to avoid committing secrets.
+
+3. **Start the frontend (in a new terminal):**
    ```bash
    cd chess-voice
    python serve.py
@@ -158,6 +175,7 @@ The frontend uses **ES Modules** for maintainability:
 - **Voice recognition not working**: Make sure you're using Chrome or Edge browser
 - **Stockfish errors**: Verify that Stockfish executable is in `backend/stockfish/` directory
 - **Master games not loading**: Check your internet connection (requires Lichess API access)
+  - If you see `401 Unauthorized` for Lichess master games, set `LICHESS_OAUTH_TOKEN` in your environment before starting the backend.
 - **CORS errors**: The backend allows all origins by default for local development
 
 ## License

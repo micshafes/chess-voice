@@ -13,6 +13,20 @@ from pathlib import Path
 backend_dir = Path(__file__).parent / "backend"
 os.chdir(backend_dir)
 
+# If the user stored the OAuth token in a local file (and gitignored it),
+# load it into the expected environment variable.
+token_file = Path(__file__).parent / "backend" / "lichess_oauth.txt"
+if not os.getenv("LICHESS_OAUTH_TOKEN", "").strip() and token_file.exists():
+    try:
+        token = token_file.read_text(encoding="utf-8").strip()
+        if token:
+            os.environ["LICHESS_OAUTH_TOKEN"] = token
+            print("🔑 Loaded Lichess OAuth token from `backend/lichess_oauth.txt`")
+        else:
+            print("⚠️ `backend/lichess_oauth.txt` exists but is empty")
+    except Exception as e:
+        print(f"⚠️ Could not read `backend/lichess_oauth.txt`: {e}")
+
 # Start uvicorn
 if __name__ == "__main__":
     print("🚀 Starting Chess Voice Backend API...")
